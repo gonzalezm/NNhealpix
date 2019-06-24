@@ -1,0 +1,104 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.1'
+      jupytext_version: 1.1.5
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+# Example implementation of a NN on a Healpix map
+
+```{python}
+import numpy as np
+import nnhealpix
+import nnhealpix.map_ordering
+import nnhealpix.layers
+import healpy as hp
+import keras
+import matplotlib.pyplot as plt
+# %matplotlib notebook
+```
+
+```{python}
+input_nside = 64
+m = np.arange(hp.nside2npix(input_nside))
+```
+
+## DGrade
+
+```{python}
+output_nside = 8
+inputs = keras.layers.Input((len(m), 1))
+x = nnhealpix.layers.Dgrade(input_nside, output_nside)(inputs)
+model = keras.models.Model(inputs=inputs, outputs=x)
+model.compile(loss=keras.losses.mse,
+              optimizer=keras.optimizers.SGD(lr=0.01))
+model.summary()
+```
+
+```{python}
+mtensor = m.reshape(1, len(m), 1)
+out = model.predict(mtensor)
+out = out.reshape(hp.nside2npix(8))
+hp.mollview(out)
+```
+
+## MaxPooling
+
+```{python}
+inputs = keras.layers.Input((len(m), 1))
+x = nnhealpix.layers.MaxPooling(input_nside, output_nside)(inputs)
+model = keras.models.Model(inputs=inputs, outputs=x)
+model.compile(loss=keras.losses.mse,
+              optimizer=keras.optimizers.SGD(lr=0.01))
+model.summary()
+```
+
+```{python}
+mtensor = m.reshape(1, len(m), 1)
+out = model.predict(mtensor)
+out = out.reshape(hp.nside2npix(output_nside))
+hp.mollview(out)
+```
+
+## ConvPixel
+
+```{python}
+mtensor = m.reshape(1, len(m), 1)
+inputs = keras.layers.Input((len(m), 1))
+x = nnhealpix.layers.ConvPixel(input_nside, output_nside, filters=1)(inputs)
+model = keras.models.Model(inputs=inputs, outputs=x)
+model.compile(loss=keras.losses.mse,
+              optimizer=keras.optimizers.SGD(lr=0.01))
+model.summary()
+```
+
+```{python}
+mtensor = m.reshape(1, len(m), 1)
+out = model.predict(mtensor)
+out = out.reshape(hp.nside2npix(output_nside))
+hp.mollview(out)
+```
+
+## ConvNeighbours
+
+```{python}
+mtensor = m.reshape(1, len(m), 1)
+inputs = keras.layers.Input((len(m), 1))
+x = nnhealpix.layers.ConvNeighbours(input_nside, filters=32, kernel_size=9)(inputs)
+model = keras.models.Model(inputs=inputs, outputs=x)
+model.compile(loss=keras.losses.mse,
+              optimizer=keras.optimizers.SGD(lr=0.01))
+model.summary()
+out = model.predict(mtensor)
+```
+
+```{python}
+
+```
