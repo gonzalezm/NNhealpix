@@ -13,7 +13,6 @@ jupyter:
 ---
 
 ```{python}
-# %autosave 0
 # %matplotlib inline
 import tensorflow as tf
 import math
@@ -31,10 +30,13 @@ import nnhealpix.layers
 ## Création des $C_\ell$
 
 ```{python}
-l=np.linspace(5.0, 100.0, 200)
-l_p=np.linspace(5.0, 50.0, 10010)
+l=np.linspace(5.0, 100.0, 2000)
+l_p= (50.0-5.0)*np.random.random_sample(10010,) + 5
+moy_l_p = np.mean(l_p)
+ecart_l_p = np.sqrt(np.var(l_p))
 sigma_p=5.0
 print(l.shape, l_p.shape)
+print(moy_l_p, ecart_l_p)
 ```
 
 ```{python}
@@ -44,16 +46,15 @@ for i in range (len(l)):
         C_l[i,j]=np.exp(-((l[i]-l_p[j])**2.0)/(2.0*sigma_p**2.0))+10.0**(-5.0)
 ```
 
-```{python}
-#fig1=plt.figure(1,figsize=(10,10),edgecolor='black')
-#color=plt.cbar()
-#color.set_label('$\ell _p$')
-#plt.ylabel('$C_\ell$')
-#plt.xlabel('Multipole $\ell$')
-#for i in range (len(l_p)):
-#    plt.plot(l,C_l)
-#plt.show
-```
+fig1=plt.figure(1,figsize=(10,10),edgecolor='black')
+color=plt.cbar()
+color.set_label('$\ell _p$')
+plt.ylabel('$C_\ell$')
+plt.xlabel('Multipole $\ell$')
+for i in range (len(l_p)):
+    plt.plot(l,C_l)
+plt.show
+
 
 ## Mapisation des $C_ \ell$
 
@@ -63,27 +64,46 @@ Maps = []
 for j in range (len(l_p)) :
     Map = hp.sphtfunc.synfast(C_l[:,j], nside)
     Maps = np.append(Maps,Map)
-Maps=Maps.reshape((12*nside**2, len(l_p)))
-print(Maps)
+Maps = Maps.reshape((12*nside**2, len(l_p)))
+print(np.abs(Maps).max())
 print(Maps.shape)
 ```
 
-## Préparation du ML
+```{python}
+moy_Maps = np.mean(Maps)
+ecart_Maps = np.sqrt(np.var(Maps))
+Max_Maps = np.abs(Maps).max()
+Maps = (Maps-moy_Maps)/(np.abs(Maps).max())
+```
+
+```{python}
+print(moy_Maps)
+print(ecart_Maps)
+print(np.abs(Maps).max())
+```
+
+# Machine Learning
+
+
+## Préparation des données
 
 ```{python}
 Ntrain = 10000-100
-Ntest = 910
+Ntest = 110
+Max_l_p=np.abs(l_p).max()
+NNl_p = (l_p-moy_l_p)/(np.abs(l_p).max())
 X_train = Maps[:,0:(Ntrain)]
-y_train = l_p[0:(Ntrain)]
+y_train = NNl_p[0:(Ntrain)]
 X_test = Maps[:,(Ntrain):(Ntrain+Ntest)]
-y_test = l_p[(Ntrain):(Ntrain+Ntest)]
+y_test = NNl_p[(Ntrain):(Ntrain+Ntest)]
 print(y_train.shape, y_test.shape)
 y_train = kr.utils.to_categorical(y_train)
 y_test = kr.utils.to_categorical(y_test)
-y_test = y_test[:,:50]
+#y_test = y_test[:,:50]
 #y_train = y_train.T
 #y_test = y_test.T
 print(y_train.shape, y_test.shape)
+print(np.abs(NNl_p).max())
 ```
 
 ```{python}
@@ -120,7 +140,7 @@ x = kr.layers.Dense(num_classes)(x)
 out=kr.layers.Activation('softmax')(x)
 ```
 
-### Model
+## Model
 
 ```{python}
 model = kr.models.Model(inputs=inputs, outputs=out)
@@ -128,12 +148,26 @@ model.compile(loss=kr.losses.mse, optimizer='adam', metrics=['accuracy'])
 model.summary()
 ```
 
-### Training
+## Training
 
 ```{python}
-model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=5, batch_size=100, verbose=1)
+model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=100, batch_size=500, verbose=1)
 scores = model.evaluate(X_test, y_test, verbose=0)
 print("CNN Error: %.2f%%" % (100-scores[1]*100))
+```
+
+```{python}
+prediction = model.predict(X_test)*ecart_l_p+moy_l_p
+```
+
+```{python}
+print(X_test)
+print(y_test)
+```
+
+```{python}
+prediction.shape
+diff=prediction-
 ```
 
 ```{python}
