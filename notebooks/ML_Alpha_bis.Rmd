@@ -44,7 +44,12 @@ print(moy_l_p, ecart_l_p)
 C_l=np.zeros((len(l),len(l_p)))
 for i in range (len(l)):
     for j in range (len(l_p)):
-        C_l[i,j]=np.exp(-((l[i]-l_p[j])**2.0)/(2.0*sigma_p**2.0))+10.0
+        C_l[i,j]=np.exp(-((l[i]-l_p[j])**2.0)/(2.0*sigma_p**2.0))+10.0**(-5)
+```
+
+```{python}
+moy_C_l = np.mean(C_l)
+ecart_C_l = np.sqrt(np.var(C_l))
 ```
 
 fig1=plt.figure(1,figsize=(10,10),edgecolor='black')
@@ -87,28 +92,25 @@ print(np.abs(Maps).max())
 
 ```{python}
 Ntrain = 10000-100
-Ntest = 110
-Max_l_p=np.abs(l_p).max()
-NNl_p = (l_p-moy_l_p)/(np.abs(l_p).max())
+Ntest = 100
+Max_C_l=np.abs(C_l).max()
+NNC_l = (C_l-moy_C_l)/(np.abs(C_l).max())
 X_train = Maps[:,0:(Ntrain)]
-y_train = NNl_p[0:(Ntrain)]
+y_train = NNC_l[:,0:(Ntrain)]
 X_test = Maps[:,(Ntrain):(Ntrain+Ntest)]
-y_test = NNl_p[(Ntrain):(Ntrain+Ntest)]
+y_test = NNC_l[:,(Ntrain):(Ntrain+Ntest)]
+y_train = y_train.T
+y_test = y_test.T
 print(y_train.shape, y_test.shape)
-y_train = kr.utils.to_categorical(y_train)
-y_test = kr.utils.to_categorical(y_test)
-#y_test = y_test[:,:50]
-#y_train = y_train.T
-#y_test = y_test.T
-print(y_train.shape, y_test.shape)
-print(np.abs(NNl_p).max())
+print(np.abs(NNC_l).max())
 ```
 
 ```{python}
 seed = 7
 np.random.seed(seed)
 shape=(len(Maps[:,0]), 1)
-num_classes = y_train.shape[1]
+num_classes = y_train.shape[0]
+print(num_classes)
 X_train = X_train.T
 X_test = X_test.T
 print(X_train.shape, shape, X_test.shape)
@@ -134,14 +136,15 @@ x = kr.layers.Dense(128)(x)
 x = kr.layers.Activation('relu')(x)
 x = kr.layers.Dense(num_classes)(x)
 
-out=kr.layers.Activation('softmax')(x)
+out=kr.layers.Activation('sigmoid')(x)
+out_reshape=kr.layers.Reshape()(out)
 ```
 
 ### Model
 
 ```{python}
-model = kr.models.Model(inputs=inputs, outputs=out)
-model.compile(loss=kr.losses.mse, optimizer='adam', metrics=['accuracy'])
+model = kr.models.Model(inputs=inputs, outputs=out_reshape)
+model.compile(loss=kr.losses.mse, optimizer='adam', metrics=['accuracy', kr.metrics.mean_absolute_percentage_error])
 model.summary()
 ```
 
@@ -154,7 +157,7 @@ print("CNN Error: %.2f%%" % (100-scores[1]*100))
 ```
 
 ```{python}
-prediction = model.predict(X_test)*ecart_l_p+moy_l_p
+prediction = model.predict(X_test)*np.abs(C_l).max()+moy_C_l
 ```
 
 ```{python}
