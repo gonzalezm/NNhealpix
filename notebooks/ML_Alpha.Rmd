@@ -29,79 +29,22 @@ import nnhealpix.layers
 import sklearn.utils as sku
 ```
 
-## Création des $C_\ell$
+# Take the data
 
 ```{python}
-l=np.linspace(5.0, 100.0, 2000)
-l_p= (50.0-5.0)*np.random.random_sample(10000,) + 5
-moy_l_p = np.mean(l_p)
-ecart_l_p = np.sqrt(np.var(l_p))
-sigma_p=5.0
-print(l.shape, l_p.shape)
-print(moy_l_p, ecart_l_p)
-print(np.max(l_p))
+directory = input("Choose a directory where take the data (Enter = same folder than this program): ")
+l_p = np.load(directory + "l_p.npy")
 ```
 
 ```{python}
-C_l=np.zeros((len(l),len(l_p)))
-for i in range (len(l)):
-    for j in range (len(l_p)):
-        C_l[i,j]=np.exp(-((l[i]-l_p[j])**2.0)/(2.0*sigma_p**2.0))+10.0**(-5.0)
-```
-
-```{python}
-C_l.shape
-for i in range(10):
-    plt.plot(l, C_l[:, i])
-```
-
-fig1=plt.figure(1,figsize=(10,10),edgecolor='black')
-color=plt.cbar()
-color.set_label('$\ell _p$')
-plt.ylabel('$C_\ell$')
-plt.xlabel('Multipole $\ell$')
-for i in range (len(l_p)):
-    plt.plot(l,C_l)
-plt.show
-
-
-## Mapisation des $C_ \ell$
-
-```{python}
-nside = 16
-Maps = []
-for j in range (len(l_p)) :
-    Map = hp.sphtfunc.synfast(C_l[:,j], nside)
-    Maps = np.append(Maps,Map)
-Maps = Maps.reshape((12*nside**2, len(l_p)))
-
-```
-
-for i in range (len(l_p)-1):
-    for j in range (len(l_p)-1):
-        if i != j:
-            for k in range (len(Maps[:,0])):
-                if Maps[k,i] == Maps[k,j]:
-                    print("Il y a une erreur entre ", k," ", i, " et ", k," ", j )
-
-```{python}
+Maps = np.load(directory + "Maps.npy")
 moy_Maps = np.mean(Maps)
 ecart_Maps = np.sqrt(np.var(Maps))
 Max_Maps = np.abs(Maps).max()
-Maps = (Maps-moy_Maps)/(np.abs(Maps).max())
-```
-
-```{python}
 print(Maps.shape)
 print(ecart_Maps)
-print(np.abs(Maps).max())
+print(Max_Maps)
 print(Maps)
-```
-
-hp.mollview(X_train[1,:,0])
-
-```{python}
-plt.plot(y_train)
 ```
 
 # Machine Learning
@@ -183,7 +126,7 @@ model.summary()
 
 ```{python}
 # Entrainement du model
-hist = model.fit(X_train, y_train, epochs=100, batch_size=10, validation_split = 0.1, verbose = 1, shuffle = True)
+hist = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split = 0.1, verbose = 1, shuffle = True)
 scores = model.evaluate(X_test, y_test, verbose=0)
 print("CNN Error: %.2f%%" % (100-scores[1]*100))
 ```
@@ -203,28 +146,30 @@ print(y_test)
 
 ```{python}
 prediction.shape
-diff=prediction-y_test
+diff = prediction-y_test
 ```
 
 ```{python}
 # Comparaison entre les valeurs obtenues et les valeurs recherchées
-fig1=plt.figure(1,figsize=(10,10),edgecolor='gray')
+fig1 = plt.figure(1, figsize = (10, 10), edgecolor = 'black')
 plt.ylabel('$\ell _p$ recherchés et $\ell _p$ prédit')
 plt.xlabel('')
-plt.title('Comparatif des données recherchées et prédite par le modèle')
-for i in range (len(diff[:,0])):
-    plt.plot(i, prediction[i,0], color ='blue',marker='o')
-    plt.plot(i, l_p[i], color ='red',marker='+')
+plt.title('Comparatif des données recherchées et prédites par le modèle')
+plt.plot(prediction[:,0], color ='blue',marker='o')
+plt.plot(l_p, color ='red',marker='+')
 plt.legend(['$\ell _p$ prédits','$\ell _p$ recherchés' ],loc = 2)
+plt.show()
+
+fig2 = plt.figure(2, figsize = (10, 10), edgecolor = 'black')
+plt.ylabel('Différence entre les $\ell _p$ prédits et les $\ell _p$ recherché')
+plt.xlabel('')
+plt.title('Différence entre la prédiction et les données attendues.')
+plt.plot(diff, color ='green',marker='x')
 plt.show()
 ```
 
 ```{python}
-plt.plot(l_p[:20], prediction[:, 0], '.')
-```
-
-```{python}
-
+plt.plot(l_p[:100], prediction[:, 0], '.')
 ```
 
 ```{python}
