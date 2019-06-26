@@ -22,7 +22,7 @@ import healpy as hp
 ```
 
 ```{python}
-directory="/home/stagiaire/NNhealpix/notebooks/"
+directory = input("Enter directory where you want save your files (tape Enter to save in the same folder than this program): ")
 l=np.linspace(5.0, 100.0, 2000)
 l_p= (50.0-5.0)*np.random.random_sample(10000,) + 5
 moy_l_p = np.mean(l_p)
