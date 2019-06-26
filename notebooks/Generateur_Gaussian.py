@@ -1,30 +1,38 @@
-import math
+import sys
 import numpy as np
-import matplotlib.pyplot as plt
 import healpy as hp
+import scipy.stats as stats
 
-directory = input("Enter directory where you want save your files (tape Enter to save in the same folder than this program): ")
-l=np.linspace(5.0, 100.0, 2000)
-l_p= (50.0-5.0)*np.random.random_sample(100000,) + 5
+
+# Directory where files will be saved
+dir = sys.argv[1]
+
+# Number of map you want
+nmap = np.int(sys.argv[2])
+
+# Create random gaussian mean for the spectra
+# between 5 and 50
+l_p = 45 * np.random.random_sample(nmap,) + 5
+
 moy_l_p = np.mean(l_p)
-ecart_l_p = np.sqrt(np.var(l_p))
-sigma_p=5.0
-print(l.shape, l_p.shape)
-print(moy_l_p, ecart_l_p)
-print(np.max(l_p))
-np.save(directory + "l_p", l_p)
+ecart_l_p = np.std(l_p)
+max_lp = np.max(l_p)
 
-C_l=np.zeros((len(l),len(l_p)))
-for i in range (len(l)):
-    for j in range (len(l_p)):
-        C_l[i,j]=np.exp(-((l[i]-l_p[j])**2.0)/(2.0*sigma_p**2.0))+10.0**(-5.0)
-np.save(directory + "C_l", C_l)
+print('l_p shape = {}'.format(l_p.shape))
+print('l_p mean, std and max : {0} {1} {2}'.format(moy_l_p, ecart_l_p, max_lp))
 
+# Create spectra (Cl) and associated maps
 nside = 16
-Maps = []
-for j in range (len(l_p)) :
-    Map = hp.sphtfunc.synfast(C_l[:,j], nside)
-    Maps = np.append(Maps,Map)
-Maps = Maps.reshape((12*nside**2, len(l_p)))
-np.save(directory + "Maps", Maps)
+sigma_p = 5.0
+l = np.linspace(5.0, 100.0, 2000)
+print('l shape = {}'.format(l.shape))
+C_l = np.empty((len(l), len(l_p)))
+Maps = np.empty((12 * nside ** 2, len(l_p)))
+for j, lp in enumerate(l_p):
+    C_l[:, j] = stats.norm.pdf(l, lp, sigma_p) + 10.**(-5)
+    Maps[:, j] = hp.sphtfunc.synfast(C_l[:, j], nside)
 
+# Save lp, Cl, maps in 3 files
+np.save(dir + 'l_p', l_p)
+np.save(dir + 'C_l', C_l)
+np.save(dir + 'Maps', Maps)
