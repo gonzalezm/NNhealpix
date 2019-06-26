@@ -46,5 +46,9 @@ for j in range (len(l_p)) :
     Map = hp.sphtfunc.synfast(C_l[:,j], nside)
     Maps = np.append(Maps,Map)
 Maps = Maps.reshape((12*nside**2, len(l_p)))
-np.save("/home/stagiaire/Documents/christopher/Maps{}", Maps)
+np.save("/home/stagiaire/Documents/christopher/Maps", Maps)
+```
+
+```{python}
+
 ```
