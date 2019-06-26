@@ -5,7 +5,7 @@ jupyter:
       extension: .Rmd
       format_name: rmarkdown
       format_version: '1.1'
-      jupytext_version: 1.1.5
+      jupytext_version: 1.1.7
   kernelspec:
     display_name: Python 3
     language: python
@@ -18,10 +18,11 @@ jupyter:
 In this notebook we show how to use NNhealpix to reproduce a classic NN test on the Healpix sphere: the recognition of handwritten digits from the MNIST dataset.
 
 ```{python}
+# %matplotlib inline
 import keras
 from keras.datasets import mnist
 import keras.layers
-from nnhealpix.map_projection import img2healpix, img2healpix_planar
+from nnhealpix.projections import img2healpix, img2healpix_planar
 import matplotlib.pyplot as plt
 import numpy as np
 import healpy as hp
