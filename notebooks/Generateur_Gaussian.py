@@ -1,4 +1,6 @@
 import sys
+import os
+import datetime
 import numpy as np
 import healpy as hp
 import scipy.stats as stats
@@ -6,6 +8,13 @@ import scipy.stats as stats
 
 # Directory where files will be saved
 dir = sys.argv[1]
+today = datetime.datetime.now().strftime('%Y%m%d')
+out_dir = dir + '{}/'.format(today)
+
+try:
+    os.makedirs(out_dir)
+except:
+    pass
 
 # Number of map you want
 nmap = np.int(sys.argv[2])
@@ -33,6 +42,6 @@ for j, lp in enumerate(l_p):
     Maps[:, j] = hp.sphtfunc.synfast(C_l[:, j], nside)
 
 # Save lp, Cl, maps in 3 files
-np.save(dir + 'l_p', l_p)
-np.save(dir + 'C_l', C_l)
-np.save(dir + 'Maps', Maps)
+np.save(out_dir + '/l_p', l_p)
+np.save(out_dir + '/C_l', C_l)
+np.save(out_dir + '/Maps', Maps)
