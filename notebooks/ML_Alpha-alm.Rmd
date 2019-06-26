@@ -1,0 +1,232 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.1'
+      jupytext_version: 1.1.6
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+```{python}
+# %matplotlib inline
+# %autosave 0
+import camb
+from camb import model, initialpower
+import tensorflow as tf
+import math
+import keras as kr
+import numpy as np
+import matplotlib.pyplot as plt
+import healpy as hp
+from keras.models import Sequential
+import nnhealpix as nn
+import nnhealpix.layers
+import keras.backend as K
+from pylab import *
+rcParams['image.cmap'] = 'jet'
+```
+
+# Take the data
+
+```{python}
+#Set up a new set of parameters for CAMB
+pars = camb.CAMBparams()
+#This function sets up CosmoMC-like settings, with one massive neutrino and helium set using BBN consistency
+pars.set_cosmology(H0=67.5, ombh2=0.022, omch2=0.122, mnu=0.06, omk=0, tau=0.06)
+pars.InitPower.set_params(ns=0.965, r=0)
+pars.set_for_lmax(2500, lens_potential_accuracy=0);
+#calculate results for these parameters
+results = camb.get_results(pars)
+#get dictionary of CAMB power spectra
+powers = results.get_cmb_power_spectra(pars, CMB_unit='muK')
+for name in powers: print(name)
+
+
+#plot the total lensed CMB power spectra versus unlensed, and fractional difference
+totCL = powers['total']
+unlensedCL = powers['unlensed_scalar']
+print(totCL.shape)
+
+# ls = np.arange(totCL.shape[0])
+clf()
+plot(ls,totCL[:,0], color='k')
+```
+
+```{python}
+CL = totCL[:,0]/ls/(ls+1)
+CL[0]=0
+
+ns = 16
+map =hp.synfast(CL[0:5*ns], ns, pixwin=False)
+hp.mollview(map)
+```
+
+```{python}
+lmax = 2*ns-1
+nl = 2*ns
+nalm = (2*ns)*(2*ns+1)/2
+outcl, outalm = hp.anafast(map,alm=True, lmax=lmax)
+print(outcl.shape, nl)
+print(outalm.shape, nalm)
+print(outalm.dtype)
+print(outalm[0:50])
+ll = np.arange(outcl.shape[0])
+clf()
+plot(ll,ll*(ll+1)*outcl)
+plot(ls, ls*(ls+1)*CL, 'r')
+xlim(0,max(ll))
+```
+
+```{python}
+#clt = CL[0:nl]
+lt = ll[0:nl]
+
+nbmodels = 10001
+nnn = int(nbmodels/30)
+npixok = 12*ns**2
+limit_shape = 3*ns
+okpix = np.arange(npixok)
+mymaps = np.zeros((nbmodels, npixok))
+myalms = np.zeros((nbmodels, int(nalm)), dtype = complex128)
+expcls = np.zeros((nbmodels, nl))
+mycls = np.zeros((nbmodels, nl))
+expcls = np.zeros((nbmodels, nl))
+allshapes = np.zeros((nbmodels, len(ls)))
+for i in range(nbmodels):
+  ylo = np.random.rand()*2
+  yhi = np.random.rand()*2
+  if (i/nnn)*nnn == i: 
+    print(i,ylo,yhi)
+  theshape = ylo+(yhi-ylo)/(limit_shape)*ls
+  theshape[theshape < 0] = 0
+  theshape[limit_shape:] = 0
+  allshapes[i,:] = theshape
+  theCL = CL*theshape
+  themap = hp.synfast(theCL, ns, pixwin=False, verbose=False)
+  mymaps[i,:] = themap[okpix]
+  expcls[i,:], myalms[i,:] = hp.anafast(themap, lmax=lmax, alm=True)
+  mycls[i,:] = theCL[0:nl]
+
+mymaps.shape
+```
+
+```{python}
+#if (i/nnn)*nnn == i:
+    plot(lt, lt*(lt+1)*mycls[i,:])
+    
+#figure()
+#xlim(0,3*ns+10)
+#for i in range(nbmodels):
+#  if (i/nnn)*nnn == i:
+#    plot(ls, allshapes[i,:])
+```
+
+# Machine Learning
+
+
+## Préparation des données
+
+```{python}
+fraction = 0.8
+ilim = int(nbmodels*fraction)
+print(ilim)
+
+class PrintNum(kr.callbacks.Callback):
+  def on_epoch_end(self,epoch,logs):
+    if epoch % 10 == 0: 
+      print('')
+      print(epoch, end='')
+    sys.stdout.write('.')
+    sys.stdout.flush()
+print(mymaps.shape)
+print(mycls.shape)
+shape=(len(mymaps[0,:]),1)
+mymaps = mymaps.reshape(mymaps.shape[0], len(mymaps[0]), 1)
+mycls.shape
+```
+
+## NBB layers
+
+
+def mean_absolute_percentage_error(y_true, y_pred): 
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+
+```{python}
+inputs=kr.layers.Input(shape)
+x=inputs
+for i in range (int(math.log(ns,2))):
+#Recog of the neighbours & Convolution
+    print(int(ns/(2**(i))), int(ns/(2**(i+1))))
+    x = nnhealpix.layers.ConvNeighbours(int(ns/(2**(i))), filters=32, kernel_size=9)(x)
+    x = kr.layers.Activation('relu')(x)
+#Degrade
+    x = nnhealpix.layers.MaxPooling(int(ns/(2**(i))), int(ns/(2**(i+1))))(x)
+#Sortie des NBB
+x = kr.layers.Dropout(0.2)(x)
+x = kr.layers.Flatten()(x)
+x = kr.layers.Dense(48)(x)
+x = kr.layers.Activation('relu')(x)
+x = kr.layers.Dense(32)(x)
+
+out=kr.layers.Activation('relu')(x)
+```
+
+## Model
+
+```{python}
+# Création et mise en place du model
+model = kr.models.Model(inputs=inputs, outputs=out)
+model.compile(loss=kr.losses.mse, optimizer='adam', metrics=[kr.metrics.mean_absolute_percentage_error])
+model.summary()
+```
+
+```{python}
+#K.set_value(model.optimizer.lr, 0.0001)
+```
+
+## Training
+
+```{python}
+# Entrainement du model
+hist = model.fit(mymaps[:(nbmodels-1),:,:], mycls[:(nbmodels-1),:], epochs=10, batch_size=32, validation_split = 0.1, verbose = 1, shuffle = True)
+#scores = model.evaluate(X_test, y_test, verbose=0)
+#print("CNN Error: %.2f%%" % (100-scores[1]*100))
+```
+
+```{python}
+# summarize history for loss
+plot(hist.history['loss'])
+plot(hist.history['val_loss'])
+title('model loss')
+ylabel('loss')
+xlabel('epoch')
+legend(['train', 'test'], loc='upper left')
+yscale('log')
+show()
+print(min(hist.history['loss']), min(hist.history['val_loss']), len(hist.history['val_loss']))
+```
+
+```{python}
+prediction=model.predict(mymaps[(nbmodels-1):,:,:])
+```
+
+```{python}
+print(prediction)
+print(prediction.shape)
+```
+
+```{python}
+for i in range (len(prediction[0,:])):
+    plt.plot(i,prediction[0,i], marker = 'o', color = "blue")
+    plt.plot(i,mycls[10000,i], marker = "+", color = "red")
+```
+
+```{python}
+
+```
