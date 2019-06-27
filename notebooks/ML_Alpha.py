@@ -12,6 +12,7 @@ import nnhealpix.layers
 import sys
 import os
 import datetime
+from joblib import dump
 
 # Directory selection
 map_dir = sys.argv[1]
@@ -25,8 +26,8 @@ except:
     pass
 
 # Take the data
-l_p = np.load(out_dir + "/l_p.npy")
-Maps = np.load(out_dir + "/Maps.npy")
+l_p = np.load(map_dir + "/l_p.npy")
+Maps = np.load(map_dir + "/Maps.npy")
 nside = np.sqrt(Maps.shape[0]/12)
 print("nside = ",nside)
 ecart_Maps = np.sqrt(np.var(Maps))
@@ -95,7 +96,12 @@ hist = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0
 # Prediction on 100 l_p
 prediction = model.predict(X_test)
 
+dump(model, out_dir + "/model.joblib")
 np.save(out_dir + "/prediction",prediction)
 np.save(out_dir + "/y_test", y_test)
 np.save(out_dir + "/hist_loss",hist.history['loss'])
 np.save(out_dir + "/hist_val_loss",hist.history['val_loss'])
+ 
+  
+# Save the model as a pickle in a file 
+
