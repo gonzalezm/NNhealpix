@@ -5,11 +5,13 @@ import numpy as np
 import healpy as hp
 import scipy.stats as stats
 
+# Simulation name
+name = sys.argv[1]
 
 # Directory where files will be saved
-dir = sys.argv[1]
-today = datetime.datetime.now().strftime('%Y%m%d')
-out_dir = dir + '{}/'.format(today)
+dir = sys.argv[2]
+today = datetime.datetime.now().strftime('%Y%m%d') 
+out_dir = dir + today + '/' + name + '/'
 
 try:
     os.makedirs(out_dir)
@@ -17,7 +19,7 @@ except:
     pass
 
 # Number of map you want
-nmap = np.int(sys.argv[2])
+nmap = np.int(sys.argv[3])
 
 # Create random gaussian mean for the spectra
 # between 5 and 50
@@ -42,6 +44,6 @@ for j, lp in enumerate(l_p):
     Maps[:, j] = hp.sphtfunc.synfast(C_l[:, j], nside)
 
 # Save lp, Cl, maps in 3 files
-np.save(out_dir + '/l_p', l_p)
-np.save(out_dir + '/C_l', C_l)
-np.save(out_dir + '/Maps', Maps)
+np.save(out_dir + name + '_l_p', l_p)
+np.save(out_dir + name + '_C_l', C_l)
+np.save(out_dir + name + '_Maps', Maps)
