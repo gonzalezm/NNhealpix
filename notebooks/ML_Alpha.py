@@ -14,9 +14,10 @@ import os
 import datetime
 
 # Directory selection
-dir = sys.argv[1]
-today = datetime.datetime.now().strftime('%Y%m%d')
-out_dir = dir + '{}/'.format(today)
+map_dir = sys.argv[1]
+out_dir = sys.argv[2]
+today = datetime.datetime.now().strftime('%Y%m%d_%H_%H_%S')
+out_dir += '{}/'.format(today)
 
 try:
     os.makedirs(out_dir)
@@ -26,11 +27,16 @@ except:
 # Take the data
 l_p = np.load(out_dir + "/l_p.npy")
 Maps = np.load(out_dir + "/Maps.npy")
-
-nside = 16
+nside = np.sqrt(Maps.shape[0]/12)
+print("nside = ",nside)
 ecart_Maps = np.sqrt(np.var(Maps))
-if Maps.shape != (len(l_p),12*nside**2) :
+j=0
+while 2**j <=  nside :
+    j = j+1
+if 2**j % nside != 0:
     print("Erreur: Les maps n'ont pas la bonne shape ", Maps.shape, "au lieu de ", (len(l_p),12*nside**2))
+nside = int(nside)
+print("nside = ",nside)
 print("\n A titre indicatif l'écart type des valeur des Maps :", ecart_Maps)
 
 #Data preprocessing Machine Learning
@@ -86,9 +92,8 @@ hist = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split =
 
 # Prediction on 100 l_p
 prediction = model.predict(X_test)
-diff = prediction-y_test
 
 np.save(out_dir + "/prediction",prediction)
-np.save(out_dir + "/diff", diff)
+np.save(out_dir + "/y_test", y_test)
 np.save(out_dir + "/hist_loss",hist.history['loss'])
 np.save(out_dir + "/hist_val_loss",hist.history['val_loss'])
