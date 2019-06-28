@@ -1,10 +1,9 @@
-import camb
-from camb import model, initialpower
 import tensorflow as tf
 import math
 import keras as kr
 import numpy as np
 from keras.models import Sequential
+import healpy as hp
 import nnhealpix as nn
 import nnhealpix.layers
 from pylab import *
@@ -30,16 +29,25 @@ myclsmod = np.load(map_dir + "/myclsmod.npy")
 ns = np.sqrt(mymaps.shape[1]/12)
 print("Nside = ", ns)
 
+radius = 20 #deg
+theta = 3*np.pi/4
+phy = np.pi/2
+vec=hp.ang2vec(theta, phy)
+
+patch = hp.query_disc(ns, vec, radius=np.radians(radius))
+map_patch = np.full((mymaps.shape[0],mymaps.shape[1]), hp.UNSEEN)
+for i in range (mymaps.shape[0]):
+    map_patch[i, patch] = mymaps[i, patch]
+
+
 #Machine learning
 #Data preprocess  
 
-print("The shape of mymaps (inputs): ", mymaps.shape)
-print("The shape of mycls / myclsmod (outputs): ", myclsmod.shape)
-shape=(len(mymaps[0,:]),1)
-mymaps = mymaps.reshape(mymaps.shape[0], len(mymaps[0]), 1)
-print("The shape of mymaps (inputs) after reshape: ", mymaps.shape)
-nbmodels = mymaps.shape[0]
-print("Number of model: ", nbmodels)
+print("La shape de map_patch (inputs): ", map_patch.shape)
+print("La shape de mycls / myclsmod (outputs): ", myclsmod.shape)
+shape=(len(map_patch[0,:]),1)
+map_patch = map_patch.reshape(map_patch.shape[0], len(map_patch[0]), 1)
+nbmodels = map_patch.shape[1]
 nbtest = int(0.1*nbmodels)
 
 #NBB layers
@@ -67,10 +75,10 @@ mymodel.compile(loss=kr.losses.mse, optimizer='adam', metrics=[kr.metrics.mean_a
 mymodel.summary()
 
 # Training
-hist = mymodel.fit(mymaps[:(nbmodels-nbtest),:,:], myclsmod[:(nbmodels-nbtest),:], epochs=5, batch_size=32, validation_split = 0.1, verbose = 1, shuffle = True)
+hist = mymodel.fit(map_patch[:(nbmodels-nbtest),:,:], myclsmod[:(nbmodels-nbtest),:], epochs=5, batch_size=32, validation_split = 0.1, verbose = 1, shuffle = True)
 
 #Make a prédiction
-prediction=mymodel.predict(mymaps[(nbmodels-nbtest):,:,:])
+prediction=mymodel.predict(map_patch[(nbmodels-nbtest):,:,:])
 
 dump(mymodel, out_dir + "/mymodel.joblib")
 np.save(out_dir + "/loss-alm", hist.history['loss'])

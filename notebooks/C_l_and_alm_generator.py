@@ -9,7 +9,6 @@ import datetime
 
 # Directory where files will be saved
 
-
 dir = sys.argv[1]
 now = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
 out_dir = dir + '{}/'.format(now)
