@@ -25,18 +25,21 @@ except:
     pass
 
 #Take data
-mymaps = np.load(map_dir + "/mymaps.npy")
-myclsmod = np.load(map_dir + "/myclsmod.npy")
-ns = np.sqrt(mymaps.shape[0]/12)
+mymaps = np.load(out_dir + "/mymaps.npy")
+myclsmod = np.load(out_dir + "/myclsmod.npy")
+ns = np.sqrt(mymaps.shape[1]/12)
+print("Nside = ", ns)
 
 #Machine learning
 #Data preprocess  
 
-print("La shape de mymaps (inputs): ", mymaps.shape)
-print("La shape de mycls / myclsmod (outputs): ", myclsmod.shape)
+print("The shape of mymaps (inputs): ", mymaps.shape)
+print("The shape of mycls / myclsmod (outputs): ", myclsmod.shape)
 shape=(len(mymaps[0,:]),1)
 mymaps = mymaps.reshape(mymaps.shape[0], len(mymaps[0]), 1)
+print("The shape of mymaps (inputs) after reshape: ", mymaps.shape)
 nbmodels = mymaps.shape[0]
+print("Number of model: ", nbmodels)
 nbtest = int(0.1*nbmodels)
 
 #NBB layers

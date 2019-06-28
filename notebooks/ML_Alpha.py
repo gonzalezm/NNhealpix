@@ -35,11 +35,11 @@ j=0
 while 2**j <=  nside :
     j = j+1
 if 2**j % nside != 0:
-    print("Erreur: Les maps n'ont pas la bonne shape ", Maps.shape, "au lieu de ", (len(l_p),12*nside**2))
+    print("Erreur: Maps has not the good shape: ", Maps.shape, "instead of: ", (len(l_p),12*nside**2))
 nside = int(nside)
 print("nside = ",nside)
 
-print("\n A titre indicatif l'écart type des valeur des Maps :", ecart_Maps)
+print("\n Standard deviation of Maps  :", ecart_Maps)
 
 # Data preprocessing Machine Learning
 Ntest = 0.01 * len(l_p)
@@ -57,9 +57,9 @@ X_test = X_test.T
 X_train = X_train.reshape(X_train.shape[0], len(X_train[0]), 1)
 X_test = X_test.reshape(X_test.shape[0], len(X_test[0]), 1)
 shape = (len(Maps[:, 0]), 1)
-print("\n Les shapes des $X_train$ et des $X_test$ ainsi que celle de l'input attendu: ", X_train.shape, shape,
+print("\n The shapes of $X_train$, $X_test$ and of the input: ", X_train.shape, shape,
       X_test.shape)
-print("\n Les shapes des $y_train$ et des $y_test$: ", y_train.shape, y_test.shape)
+print("\n The shapes of $y_train$ & of $y_test$: ", y_train.shape, y_test.shape)
 
 # NN with NBB loop
 inputs = kr.layers.Input(shape)
@@ -97,10 +97,10 @@ hist = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0
 prediction = model.predict(X_test)
 
 dump(model, out_dir + "/model.joblib")
-np.save(out_dir + "/prediction",prediction)
+np.save(out_dir + "/prediction", prediction)
 np.save(out_dir + "/y_test", y_test)
-np.save(out_dir + "/hist_loss",hist.history['loss'])
-np.save(out_dir + "/hist_val_loss",hist.history['val_loss'])
+np.save(out_dir + "/hist_loss", hist.history['loss'])
+np.save(out_dir + "/hist_val_loss", hist.history['val_loss'])
  
   
 # Save the model as a pickle in a file 
