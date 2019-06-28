@@ -75,7 +75,7 @@ mymodel.compile(loss=kr.losses.mse, optimizer='adam', metrics=[kr.metrics.mean_a
 mymodel.summary()
 
 # Training
-hist = mymodel.fit(map_patch[:(nbmodels-nbtest),:,:], myclsmod[:(nbmodels-nbtest),:], epochs=5, batch_size=32, validation_split = 0.1, verbose = 1, shuffle = True)
+hist = mymodel.fit(map_patch[:(nbmodels-nbtest),:,:], myclsmod[:(nbmodels-nbtest),:], epochs=100, batch_size=32, validation_split = 0.1, verbose = 1, shuffle = True)
 
 #Make a prédiction
 prediction=mymodel.predict(map_patch[(nbmodels-nbtest):,:,:])
