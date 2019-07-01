@@ -73,7 +73,7 @@ for i in range(nbmodels):
   mymaps[i,:] = themap[okpix]
   expcls[i,:], myalms[i,:] = hp.anafast(themap, lmax=lmax, alm=True)
   mycls[i,:] = theCL[0:nl]
-myclsmod = lt*(lt+1)*mycls/(2*np.pi)
+myclsmod = lt*(lt+1)*mycls
 
 #All the saves
 np.save(out_dir + "/lt", lt )
