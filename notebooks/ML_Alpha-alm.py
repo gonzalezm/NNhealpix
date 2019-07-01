@@ -35,6 +35,7 @@ print("Nside = ", ns)
 
 print("The shape of mymaps (inputs): ", mymaps.shape)
 print("The shape of mycls / myclsmod (outputs): ", myclsmod.shape)
+num_out = myclsmod.shape[1]
 shape=(len(mymaps[0,:]),1)
 mymaps = mymaps.reshape(mymaps.shape[0], len(mymaps[0]), 1)
 print("The shape of mymaps (inputs) after reshape: ", mymaps.shape)
@@ -57,7 +58,7 @@ x = kr.layers.Dropout(0.2)(x)
 x = kr.layers.Flatten()(x)
 x = kr.layers.Dense(48)(x)
 x = kr.layers.Activation('relu')(x)
-x = kr.layers.Dense(32)(x)
+x = kr.layers.Dense(num_out)(x)
 
 out=kr.layers.Activation('relu')(x)
 
@@ -72,6 +73,8 @@ hist = mymodel.fit(mymaps[:(nbmodels-nbtest),:,:], myclsmod[:(nbmodels-nbtest),:
 #Make a prédiction
 prediction=mymodel.predict(mymaps[(nbmodels-nbtest):,:,:])
 
+#Saves
 dump(mymodel, out_dir + "/mymodel.joblib")
+np.save(out_dir + "/prediction", prediction)
 np.save(out_dir + "/loss-alm", hist.history['loss'])
 np.save(out_dir + "/val_loss-alm", hist.history['val_loss'])
