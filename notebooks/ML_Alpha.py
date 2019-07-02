@@ -92,7 +92,7 @@ model.summary()
 
 # Model training
 hist = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.1, verbose=1, shuffle=True)
-
+error = model.evaluate(X_test, y_test)
 # Prediction on 100 l_p
 prediction = model.predict(X_test)
 

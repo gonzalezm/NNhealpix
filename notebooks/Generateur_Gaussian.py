@@ -8,7 +8,7 @@ import scipy.stats as stats
 
 # Directory where files will be saved
 dir = sys.argv[1]
-today = datetime.datetime.now().strftime('%Y%m%d')
+today = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
 out_dir = dir + '{}/'.format(today)
 
 try:
