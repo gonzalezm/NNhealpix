@@ -1,22 +1,19 @@
 # -*- coding: utf-8 -*-
 # %matplotlib inline
-import tensorflow as tf
 import math
 import keras as kr
 import numpy as np
-import matplotlib.pyplot as plt
-import healpy as hp
-from keras.models import Sequential
-import nnhealpix as nn
 import nnhealpix.layers
 import sys
 import os
 import datetime
 from joblib import dump
 
+name_in = sys.argv[1]
+name_out = sys.argv[2]
 # Directory selection
-map_dir = sys.argv[1]
-out_dir = sys.argv[2]
+map_dir = sys.argv[3]
+out_dir = sys.argv[4]
 today = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
 out_dir += '{}/'.format(today)
 
@@ -26,8 +23,8 @@ except:
     pass
 
 # Take the data
-l_p = np.load(map_dir + "/l_p.npy")
-Maps = np.load(map_dir + "/Maps.npy")
+l_p = np.load(map_dir + "/" + name_in + "_l_p.npy")
+Maps = np.load(map_dir + "/" + name_in + "_Maps.npy")
 nside = np.sqrt(Maps.shape[0]/12)
 print("nside = ",nside)
 ecart_Maps = np.sqrt(np.var(Maps))
@@ -96,12 +93,10 @@ error = model.evaluate(X_test, y_test)
 # Prediction on 100 l_p
 prediction = model.predict(X_test)
 
-dump(model, out_dir + "/model.joblib")
-np.save(out_dir + "/prediction", prediction)
-np.save(out_dir + "/y_test", y_test)
-np.save(out_dir + "/hist_loss", hist.history['loss'])
-np.save(out_dir + "/hist_val_loss", hist.history['val_loss'])
- 
-  
-# Save the model as a pickle in a file 
+np.save(out_dir + "/" + name_out + "_prediction", prediction)
+np.save(out_dir + "/" + name_out + "_y_test", y_test)
+np.save(out_dir + "/" + name_out + "_hist_loss", hist.history['loss'])
+np.save(out_dir + "/" + name_out + "_hist_val_loss", hist.history['val_loss'])
+dump(model, out_dir + "/" + name_out + "_model.joblib")
+
 
