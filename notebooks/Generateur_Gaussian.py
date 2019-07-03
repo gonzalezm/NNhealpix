@@ -16,7 +16,7 @@ out_dir = dir + '{}/'.format(today)
 try:
     os.makedirs(out_dir)
 except:
-    pass
+    print("path error")
 
 # Number of map you want
 nmap = np.int(sys.argv[3])
