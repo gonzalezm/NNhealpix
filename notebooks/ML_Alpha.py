@@ -17,7 +17,10 @@ from joblib import dump
 # Directory selection
 map_dir = sys.argv[1]
 out_dir = sys.argv[2]
-today = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
+name = sys.argv[3]
+
+# today = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
+today = datetime.datetime.now().strftime('%Y%m%d')
 out_dir += '{}/'.format(today)
 
 try:
@@ -26,24 +29,37 @@ except:
     pass
 
 # Take the data
-l_p = np.load(map_dir + "/l_p.npy")
-Maps = np.load(map_dir + "/Maps.npy")
-nside = np.sqrt(Maps.shape[0]/12)
-print("nside = ",nside)
-ecart_Maps = np.sqrt(np.var(Maps))
+l_p = np.load(map_dir + '/test_l_p.npy')
+Maps = np.load(map_dir + '/test_Maps.npy')
+# l_p2 = np.load(map_dir + '/second_round_l_p.npy')
+# Maps2 = np.load(map_dir + '/second_round_Maps.npy')
+
+# l_p = np.concatenate((l_p1, l_p2))
+# Maps = np.concatenate((Maps1, Maps2), axis=1)
+print('Maps shape :', Maps.shape)
+
+# l_p = np.load(map_dir + "/l_p.npy")
+# Maps = np.load(map_dir + "/Maps.npy")
+
+nside = int(np.sqrt(Maps.shape[0]/12))
+print("nside = ", nside)
+
 j=0
 while 2**j <=  nside :
     j = j+1
 if 2**j % nside != 0:
     print("Erreur: Maps has not the good shape: ", Maps.shape, "instead of: ", (len(l_p),12*nside**2))
-nside = int(nside)
-print("nside = ",nside)
 
+ecart_Maps = np.sqrt(np.var(Maps))
 print("\n Standard deviation of Maps  :", ecart_Maps)
 
 # Data preprocessing Machine Learning
-Ntest = 0.01 * len(l_p)
-Ntrain = len(l_p) - Ntest
+Ntest = np.int(0.1 * len(l_p))
+print('Ntest = ', Ntest)
+
+Ntrain = np.int(len(l_p) - Ntest)
+print('Ntrain = ', Ntrain)
+
 # Split between train and test
 X_train = Maps[:, 0:(Ntrain)]
 y_train = l_p[0: (Ntrain)]
@@ -90,18 +106,43 @@ model = kr.models.Model(inputs=inputs, outputs=out)
 model.compile(loss=kr.losses.mse, optimizer='adam', metrics=[kr.metrics.mean_absolute_percentage_error])
 model.summary()
 
+# Callbacks
+checkpointer_mse = tf.keras.callbacks.ModelCheckpoint(filepath= out_dir + name + '_weights.{epoch:02d}-{val_loss:.2f}.hdf5',
+                                                      monitor='val_loss',
+                                                      verbose=1,
+                                                      save_best_only=True,
+                                                      save_weights_only=True,
+                                                      mode='min',
+                                                      period=1)
+
+# stop = kr.callbacks.EarlyStopping(monitor=kr.metrics.mean_absolute_percentage_error,
+#                                   min_delta=0,
+#                                   patience=10,
+#                                   verbose=0,
+#                                   mode='auto',
+#                                   restore_best_weights=True)
+
+callbacks = [checkpointer_mse]#, stop]
+
 # Model training
-hist = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.1, verbose=1, shuffle=True)
+model._ckpt_saved_epoch = None
+hist = model.fit(X_train, y_train,
+                 epochs=6,
+                 batch_size=10,
+                 validation_split=0.1,
+                 verbose=1,
+                 callbacks=callbacks,
+                 shuffle=True)
+
 error = model.evaluate(X_test, y_test)
+print('error :', error)
+
 # Prediction on 100 l_p
 prediction = model.predict(X_test)
 
-dump(model, out_dir + "/model.joblib")
-np.save(out_dir + "/prediction", prediction)
-np.save(out_dir + "/y_test", y_test)
-np.save(out_dir + "/hist_loss", hist.history['loss'])
-np.save(out_dir + "/hist_val_loss", hist.history['val_loss'])
- 
-  
-# Save the model as a pickle in a file 
+# Save the model as a pickle in a file
+dump(model, out_dir + name + '_model.joblib')
 
+np.save(out_dir + name + '_prediction', prediction)
+np.save(out_dir + name + '_hist_loss', hist.history['loss'])
+np.save(out_dir + name + '_hist_val_loss', hist.history['val_loss'])
