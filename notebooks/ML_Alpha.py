@@ -1,27 +1,20 @@
 # -*- coding: utf-8 -*-
 # %matplotlib inline
-import tensorflow as tf
 import math
 import keras as kr
 import numpy as np
-import matplotlib.pyplot as plt
-import healpy as hp
-from keras.models import Sequential
-import nnhealpix as nn
 import nnhealpix.layers
 import sys
 import os
 import datetime
 from joblib import dump
 
-# Directory selection
-map_dir = sys.argv[1]
-out_dir = sys.argv[2]
-name = sys.argv[3]
+name_in = sys.argv[1]
+in_dir = sys.argv[2]
+out_dir = sys.argv[3]
 
-# today = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
-today = datetime.datetime.now().strftime('%Y%m%d')
-out_dir += '{}/'.format(today)
+today = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
+out_dir += '/{}/'.format(today)
 
 try:
     os.makedirs(out_dir)
@@ -29,26 +22,22 @@ except:
     pass
 
 # Take the data
-l_p = np.load(map_dir + '/test_l_p.npy')
-Maps = np.load(map_dir + '/test_Maps.npy')
-# l_p2 = np.load(map_dir + '/second_round_l_p.npy')
-# Maps2 = np.load(map_dir + '/second_round_Maps.npy')
+l_p = np.load(in_dir + "/" + name_in + "_l_p.npy")
+Maps = np.load(in_dir + "/" + name_in + "_Maps.npy")
 
+# In case you need to concatenate many files :
 # l_p = np.concatenate((l_p1, l_p2))
 # Maps = np.concatenate((Maps1, Maps2), axis=1)
 print('Maps shape :', Maps.shape)
 
-# l_p = np.load(map_dir + "/l_p.npy")
-# Maps = np.load(map_dir + "/Maps.npy")
-
-nside = int(np.sqrt(Maps.shape[0]/12))
+nside = int(np.sqrt(Maps.shape[0] / 12))
 print("nside = ", nside)
 
-j=0
-while 2**j <=  nside :
-    j = j+1
-if 2**j % nside != 0:
-    print("Erreur: Maps has not the good shape: ", Maps.shape, "instead of: ", (len(l_p),12*nside**2))
+j = 0
+while 2 ** j <= nside:
+    j = j + 1
+if 2 ** j % nside != 0:
+    print("Erreur: Maps has not the good shape: ", Maps.shape, "instead of: ", (len(l_p), 12 * nside ** 2))
 
 ecart_Maps = np.sqrt(np.var(Maps))
 print("\n Standard deviation of Maps  :", ecart_Maps)
@@ -57,14 +46,14 @@ print("\n Standard deviation of Maps  :", ecart_Maps)
 Ntest = np.int(0.1 * len(l_p))
 print('Ntest = ', Ntest)
 
-Ntrain = np.int(len(l_p) - Ntest)
+Ntrain = len(l_p) - Ntest
 print('Ntrain = ', Ntrain)
 
 # Split between train and test
-X_train = Maps[:, 0:(Ntrain)]
-y_train = l_p[0: (Ntrain)]
-X_test = Maps[:, (Ntrain):(Ntrain + Ntest)]
-y_test = l_p[(Ntrain): (Ntrain + Ntest)]
+X_train = Maps[:, 0:Ntrain]
+y_train = l_p[0: Ntrain]
+X_test = Maps[:, Ntrain:(Ntrain + Ntest)]
+y_test = l_p[Ntrain: (Ntrain + Ntest)]
 
 num_classes = 1
 # Changing the shape for NBB
@@ -85,11 +74,11 @@ x = inputs
 
 for i in range(int(math.log(nside, 2))):
     # Recog of the neighbours & Convolution
-    print(int(nside / (2 ** (i))), int(nside / (2 ** (i + 1))))
-    x = nnhealpix.layers.ConvNeighbours(int(nside / (2 ** (i))), filters=32, kernel_size=9)(x)
+    print(int(nside / (2 ** i)), int(nside / (2 ** (i + 1))))
+    x = nnhealpix.layers.ConvNeighbours(int(nside / (2 ** i)), filters=32, kernel_size=9)(x)
     x = kr.layers.Activation('relu')(x)
     # Degrade
-    x = nnhealpix.layers.MaxPooling(int(nside / (2 ** (i))), int(nside / (2 ** (i + 1))))(x)
+    x = nnhealpix.layers.MaxPooling(int(nside / (2 ** i)), int(nside / (2 ** (i + 1))))(x)
 
 # End of the NBBs
 
@@ -107,25 +96,23 @@ model.compile(loss=kr.losses.mse, optimizer='adam', metrics=[kr.metrics.mean_abs
 model.summary()
 
 # Callbacks
-checkpointer_mse = tf.keras.callbacks.ModelCheckpoint(filepath= out_dir + name + '_weights.{epoch:02d}-{val_loss:.2f}.hdf5',
-                                                      monitor='val_loss',
-                                                      verbose=1,
-                                                      save_best_only=True,
-                                                      save_weights_only=True,
-                                                      mode='min',
-                                                      period=1)
+checkpointer_mse = kr.callbacks.ModelCheckpoint(filepath=out_dir + today + '_weights.{epoch:02d}-{val_loss:.2f}.hdf5',
+                                                monitor='val_loss',
+                                                verbose=1,
+                                                save_best_only=True,
+                                                save_weights_only=True,
+                                                mode='min',
+                                                period=1)
 
 # stop = kr.callbacks.EarlyStopping(monitor=kr.metrics.mean_absolute_percentage_error,
-#                                   min_delta=0,
 #                                   patience=10,
 #                                   verbose=0,
-#                                   mode='auto',
 #                                   restore_best_weights=True)
 
-callbacks = [checkpointer_mse]#, stop]
+callbacks = [checkpointer_mse]  # , stop]
 
 # Model training
-model._ckpt_saved_epoch = None
+# model._ckpt_saved_epoch = None
 hist = model.fit(X_train, y_train,
                  epochs=6,
                  batch_size=10,
@@ -141,8 +128,8 @@ print('error :', error)
 prediction = model.predict(X_test)
 
 # Save the model as a pickle in a file
-dump(model, out_dir + name + '_model.joblib')
+dump(model, out_dir + today + '_model.joblib')
 
-np.save(out_dir + name + '_prediction', prediction)
-np.save(out_dir + name + '_hist_loss', hist.history['loss'])
-np.save(out_dir + name + '_hist_val_loss', hist.history['val_loss'])
+np.save(out_dir + today + '_prediction', prediction)
+np.save(out_dir + today + '_hist_loss', hist.history['loss'])
+np.save(out_dir + today + '_hist_val_loss', hist.history['val_loss'])
