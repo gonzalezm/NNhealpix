@@ -39,7 +39,7 @@ print("nside = ",nside)
 print("\n Standard deviation of Maps  :", ecart_Maps)
 
 # Data preprocessing Machine Learning
-Ntest = 0.01 * len(l_p)
+Ntest = int(0.01 * len(l_p))
 Ntrain = len(l_p) - Ntest
 # Split between train and test
 X_train = Maps[:, 0:(Ntrain)]
