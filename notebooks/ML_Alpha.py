@@ -121,15 +121,14 @@ checkpointer_mse = kr.callbacks.ModelCheckpoint(filepath=out_dir + today + '_wei
 
 stop = kr.callbacks.EarlyStopping(monitor=kr.metrics.mean_absolute_percentage_error,
                                    patience=10,
-                                   verbose=0,
-                                   restore_best_weights=True)
+                                   verbose=0)
 
 callbacks = [checkpointer_mse, stop]
 
 # Model training
 # model._ckpt_saved_epoch = None
 hist = model.fit(X_train, y_train,
-                 epochs=60,
+                 epochs=50,
                  batch_size=32,
                  validation_split=0.1,
                  verbose=1,
