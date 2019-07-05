@@ -5,6 +5,11 @@ import numpy as np
 import healpy as hp
 import scipy.stats as stats
 
+
+# This program create Gaussian spectra and CMB maps thanks this spctra
+# It takes the name to give to data and the repository where save them
+# It saves maps, spectra and the mean of the spectra
+
 # Simulation name
 name = sys.argv[1]
 
@@ -17,6 +22,7 @@ try:
     os.makedirs(out_dir)
 except:
     print("path error")
+    pass
 
 # Number of map you want
 nmap = np.int(sys.argv[3])
@@ -25,6 +31,7 @@ nmap = np.int(sys.argv[3])
 # between 5 and 50
 l_p = 45 * np.random.random_sample(nmap,) + 5
 
+#Take some informations about the l_p
 moy_l_p = np.mean(l_p)
 ecart_l_p = np.std(l_p)
 max_lp = np.max(l_p)

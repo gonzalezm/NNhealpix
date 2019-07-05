@@ -7,21 +7,29 @@ import nnhealpix.layers
 import sys
 import os
 import datetime
-from joblib import dump
 
+# This program is a ML program
+# It takes in args the directories where load and save data
+# It takes also the name to give to data
+# It is design to find the mean of a gaussian spectrum from a CMB map based on gaussian spectrum
+# It saves data from training, prediction done by the model and the model itself
+
+#Take in arguments path where find the data and path where save new data. Take the name given during the creation of data
 name_in = sys.argv[1]
 in_dir = sys.argv[2]
 out_dir = sys.argv[3]
 
+#Add date and time to the path to save to avoid "same name file" problems.
 today = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
 out_dir += '/{}/'.format(today)
 
+#Creat the repository where save new data
 try:
     os.makedirs(out_dir)
 except:
     pass
 
-# Take the data
+# Load the data
 l_p = np.load(in_dir + "/" + name_in + "_l_p.npy")
 Maps = np.load(in_dir + "/" + name_in + "_Maps.npy")
 
@@ -30,9 +38,11 @@ Maps = np.load(in_dir + "/" + name_in + "_Maps.npy")
 # Maps = np.concatenate((Maps1, Maps2), axis=1)
 print('Maps shape :', Maps.shape)
 
+#Find Nside from maps shape
 nside = int(np.sqrt(Maps.shape[0] / 12))
 print("nside = ", nside)
 
+#Check the maps have the shape expected
 j = 0
 while 2 ** j <= nside:
     j = j + 1
@@ -56,7 +66,7 @@ X_test = Maps[:, Ntrain:(Ntrain + Ntest)]
 y_test = l_p[Ntrain: (Ntrain + Ntest)]
 
 num_classes = 1
-# Changing the shape for NBB
+# Changing the shape for NBB (NBB is the special part of the Neural Network used)
 X_train = X_train.T
 X_test = X_test.T
 X_train = X_train.reshape(X_train.shape[0], len(X_train[0]), 1)
@@ -70,7 +80,7 @@ print("\n The shapes of $y_train$ & of $y_test$: ", y_train.shape, y_test.shape)
 inputs = kr.layers.Input(shape)
 x = inputs
 
-# NBB loop
+# NBB loop (conv and degrade from nside to 1)
 
 for i in range(int(math.log(nside, 2))):
     # Recog of the neighbours & Convolution
@@ -128,7 +138,7 @@ print('error :', error)
 prediction = model.predict(X_test)
 
 # Save the model as a pickle in a file
-dump(model, out_dir + today + '_model.joblib')
+kr.models.save_model(model, out_dir + today + '_model.h5py.File')
 
 np.save(out_dir + today + '_prediction', prediction)
 np.save(out_dir + today + '_hist_loss', hist.history['loss'])

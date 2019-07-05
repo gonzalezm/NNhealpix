@@ -1,5 +1,4 @@
 import camb
-from camb import model, initialpower
 import numpy as np
 import healpy as hp
 from pylab import *
@@ -7,12 +6,18 @@ import sys
 import os
 import datetime
 
+# This program is baed on the JC work and create with camb realistic data
+# It create also random data to compare anafast and ML on smooth and random data 
+# It takes in args the directory where save the data and the number of data needed
+# It saves random and smooth data
+
 # Directory where files will be saved
 
 dir = sys.argv[1]
 now = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
 out_dir = dir + '{}/'.format(now)
 
+#Create the repository
 try:
     os.makedirs(out_dir)
 except:
@@ -44,22 +49,16 @@ nl = 2*ns
 nalm = (2*ns)*(2*ns+1)/2
 
 #Data creation
-map =hp.synfast(CL[0:5*ns], ns, pixwin=False, verbose= False)
-outcl = hp.anafast(map, alm=False, lmax = lmax)
-ll = np.arange(outcl.shape[0])
-lt = ll[0:nl]
-
 nbmodels = sys.argv[2]
 nbtest = int(0.1*nbmodels)
-nnn = int(nbmodels/30)
 npixok = 12*ns**2
 limit_shape = 3*ns
 okpix = np.arange(npixok)
+#Create realistic maps and spectrums from a theorical model
 mymaps = np.zeros((nbmodels, npixok))
 myalms = np.zeros((nbmodels, int(nalm)), dtype = complex128)
 expcls = np.zeros((nbmodels, nl))
 mycls = np.zeros((nbmodels, nl))
-allshapes = np.zeros((nbmodels, len(ls)))
 #Create random map and random spectrum from no constant or theorical model  
 cls_rdm = np.random.rand(nbmodels, mycls.shape[1])*(CL.max())
 map_rdm = np.zeros((nbmodels, len(mymaps[0])))
@@ -79,8 +78,7 @@ for i in range(nbmodels):
     ana_rdm[i,:] = hp.anafast(map_rdm[i,:], lmax = lmax, alm = False)
 
 #All the saves
-np.save(out_dir + "/lt", lt )
-#np.save(out_dir + "/myalms", myalms )
+np.save(out_dir + "/myalms", myalms )
 np.save(out_dir + "/mycls", mycls )
 np.save(out_dir + "/expcls", expcls )
 np.save(out_dir + "/mymaps", mymaps )
