@@ -33,7 +33,7 @@ nside = 16
 # Create random gaussian mean for the spectra
 # between 5 and 50
 l_p = 15 * np.random.random_sample(nmap,) + 5
-noise = np.random.randn((12*nside**2,nmap))*sys.argv[4]
+noise = np.random.randn(12*nside**2,nmap)*sys.argv[4]
 #Take some informations about the l_p
 moy_l_p = np.mean(l_p)
 ecart_l_p = np.std(l_p)
