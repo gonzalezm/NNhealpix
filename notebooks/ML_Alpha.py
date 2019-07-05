@@ -129,8 +129,8 @@ callbacks = [checkpointer_mse, stop]
 # Model training
 # model._ckpt_saved_epoch = None
 hist = model.fit(X_train, y_train,
-                 epochs=6,
-                 batch_size=10,
+                 epochs=60,
+                 batch_size=32,
                  validation_split=0.1,
                  verbose=1,
                  callbacks=callbacks,
