@@ -85,10 +85,13 @@ x = inputs
 for i in range(int(math.log(nside, 2))):
     # Recog of the neighbours & Convolution
     print(int(nside / (2 ** i)), int(nside / (2 ** (i + 1))))
-    x = nnhealpix.layers.ConvNeighbours(int(nside / (2 ** i)), filters=32, kernel_size=9)(x)
+    x = nnhealpix.layers.ConvNeighbours(int(nside / (2 ** i)),
+                                        filters=32,
+                                        kernel_size=9)(x)
     x = kr.layers.Activation('relu')(x)
     # Degrade
-    x = nnhealpix.layers.MaxPooling(int(nside / (2 ** i)), int(nside / (2 ** (i + 1))))(x)
+    x = nnhealpix.layers.MaxPooling(int(nside / (2 ** i)),
+                                    int(nside / (2 ** (i + 1))))(x)
 
 # End of the NBBs
 
@@ -102,7 +105,9 @@ out = kr.layers.Activation('relu')(x)
 
 # Creation of the model
 model = kr.models.Model(inputs=inputs, outputs=out)
-model.compile(loss=kr.losses.mse, optimizer='adam', metrics=[kr.metrics.mean_absolute_percentage_error])
+model.compile(loss=kr.losses.mse,
+              optimizer='adam',
+              metrics=[kr.metrics.mean_absolute_percentage_error])
 model.summary()
 
 # Callbacks
@@ -114,12 +119,12 @@ checkpointer_mse = kr.callbacks.ModelCheckpoint(filepath=out_dir + today + '_wei
                                                 mode='min',
                                                 period=1)
 
-# stop = kr.callbacks.EarlyStopping(monitor=kr.metrics.mean_absolute_percentage_error,
-#                                   patience=10,
-#                                   verbose=0,
-#                                   restore_best_weights=True)
+stop = kr.callbacks.EarlyStopping(monitor=kr.metrics.mean_absolute_percentage_error,
+                                   patience=10,
+                                   verbose=0,
+                                   restore_best_weights=True)
 
-callbacks = [checkpointer_mse]  # , stop]
+callbacks = [checkpointer_mse, stop]
 
 # Model training
 # model._ckpt_saved_epoch = None
