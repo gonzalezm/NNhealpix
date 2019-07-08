@@ -33,7 +33,7 @@ nside = 16
 # Create random gaussian mean for the spectra
 # between 5 and 50
 l_p = 15 * np.random.random_sample(nmap,) + 5
-noise = np.random.randn(12*nside**2,nmap)*float(sys.argv[4])
+#noise = np.random.randn(12*nside**2,nmap)*float(sys.argv[4])
 #Take some informations about the l_p
 moy_l_p = np.mean(l_p)
 ecart_l_p = np.std(l_p)
@@ -51,7 +51,7 @@ Maps = np.empty((12 * nside ** 2, len(l_p)))
 for j, lp in enumerate(l_p):
     C_l[:, j] = stats.norm.pdf(l, lp, sigma_p) + 10.**(-5)
     Maps[:, j] = hp.sphtfunc.synfast(C_l[:, j], nside, verbose = 0)
-Maps=Maps+noise
+Maps=Maps #+noise
 # Save lp, Cl, maps in 3 files
 np.save(out_dir + name + '_l_p', l_p)
 np.save(out_dir + name + '_C_l', C_l)
