@@ -120,6 +120,7 @@ checkpointer_mse = kr.callbacks.ModelCheckpoint(filepath=out_dir + today + '_wei
                                                 period=1)
 
 stop = kr.callbacks.EarlyStopping(monitor='val_loss',
+                                  verbose = 0,
                                   patience=20)
 
 callbacks = [checkpointer_mse, stop]
