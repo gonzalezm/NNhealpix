@@ -38,6 +38,8 @@ Maps = np.load(in_dir + "/" + name_in + "_Maps.npy")
 # Maps = np.concatenate((Maps1, Maps2), axis=1)
 print('Maps shape :', Maps.shape)
 
+Maps=Maps + np.random.randn(Maps.shape[0],Maps.shape[1])*float(sys.argv[4])
+
 #Find Nside from maps shape
 nside = int(np.sqrt(Maps.shape[0] / 12))
 print("nside = ", nside)
@@ -121,14 +123,15 @@ checkpointer_mse = kr.callbacks.ModelCheckpoint(filepath=out_dir + today + '_wei
 
 stop = kr.callbacks.EarlyStopping(monitor='val_loss',
                                   verbose = 0,
+				  restore_best_weights = True,
                                   patience=20)
 
 callbacks = [checkpointer_mse, stop]
 
 # Model training
 # model._ckpt_saved_epoch = None
-hist = model.fit(X_train, y_train,
-                 epochs=50,
+hista = model.fit(X_train, y_train,
+                 epochs=30,
                  batch_size=32,
                  validation_split=0.1,
                  verbose=1,
@@ -139,11 +142,11 @@ error = model.evaluate(X_test, y_test)
 print('error :', error)
 
 # Prediction on 100 l_p
-prediction = model.predict(X_test)
+#prediction = model.predict(X_test)
 
 # Save the model as a pickle in a file
 kr.models.save_model(model, out_dir + today + '_model.h5py.File')
 
-np.save(out_dir + today + '_prediction', prediction)
-np.save(out_dir + today + '_hist_loss', hist.history['loss'])
-np.save(out_dir + today + '_hist_val_loss', hist.history['val_loss'])
+#np.save(out_dir + today + '_prediction', prediction)
+np.save(out_dir + today + '_hista_loss', hista.history['loss'])
+np.save(out_dir + today + '_hista_val_loss', hista.history['val_loss'])
