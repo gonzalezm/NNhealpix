@@ -112,6 +112,7 @@ model.compile(loss=kr.losses.mse,
               metrics=[kr.metrics.mean_absolute_percentage_error])
 model.summary()
 
+
 # Callbacks
 checkpointer_mse = kr.callbacks.ModelCheckpoint(filepath=out_dir + today + '_weights.{epoch:02d}-{val_loss:.2f}.hdf5',
                                                 monitor='val_loss',
@@ -123,7 +124,7 @@ checkpointer_mse = kr.callbacks.ModelCheckpoint(filepath=out_dir + today + '_wei
 
 stop = kr.callbacks.EarlyStopping(monitor='val_loss',
                                   verbose = 0,
-				  restore_best_weights = True,
+                                  restore_best_weights = True,
                                   patience=20)
 
 callbacks = [checkpointer_mse, stop]
