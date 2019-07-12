@@ -41,6 +41,7 @@ print('Maps shape :', Maps.shape)
 #Add gaussian white noise and normalize
 Maps=Maps + np.random.randn(Maps.shape[0],Maps.shape[1])*float(sys.argv[4])
 maxmap = np.max(np.abs(Maps))
+maxlp = np.max(np.abs(l_p))
 #Find Nside from maps shape
 nside = int(np.sqrt(Maps.shape[0] / 12))
 print("nside = ", nside)
@@ -64,9 +65,9 @@ print('Ntrain = ', Ntrain)
 
 # Split between train and test
 X_train = Maps[:, 0:Ntrain]/maxmap
-y_train = l_p[0: Ntrain]
+y_train = l_p[0: Ntrain]/maxlp
 X_test = Maps[:, Ntrain:(Ntrain + Ntest)]/maxmap
-y_test = l_p[Ntrain: (Ntrain + Ntest)]
+y_test = l_p[Ntrain: (Ntrain + Ntest)]/maxlp
 
 num_classes = 1
 # Changing the shape for NBB (NBB is the special part of the Neural Network used)
@@ -133,7 +134,7 @@ callbacks = [checkpointer_mse, stop]
 # Model training
 # model._ckpt_saved_epoch = None
 hista = model.fit(X_train, y_train,
-                 epochs=30,
+                 epochs=20,
                  batch_size=32,
                  validation_split=0.1,
                  verbose=1,
@@ -144,7 +145,7 @@ error = model.evaluate(X_test, y_test)
 print('error :', error)
 
 # Prediction on 100 l_p
-#prediction = model.predict(X_test)
+#prediction = model.predict(X_test)*maxlp
 
 # Save the model as a pickle in a file
 kr.models.save_model(model, out_dir + today + '_model.h5py.File')
