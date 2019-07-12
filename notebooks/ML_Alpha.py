@@ -38,8 +38,9 @@ Maps = np.load(in_dir + "/" + name_in + "_Maps.npy")
 # Maps = np.concatenate((Maps1, Maps2), axis=1)
 print('Maps shape :', Maps.shape)
 
+#Add gaussian white noise and normalize
 Maps=Maps + np.random.randn(Maps.shape[0],Maps.shape[1])*float(sys.argv[4])
-
+maxmap = np.max(np.abs(Maps))
 #Find Nside from maps shape
 nside = int(np.sqrt(Maps.shape[0] / 12))
 print("nside = ", nside)
@@ -62,9 +63,9 @@ Ntrain = len(l_p) - Ntest
 print('Ntrain = ', Ntrain)
 
 # Split between train and test
-X_train = Maps[:, 0:Ntrain]
+X_train = Maps[:, 0:Ntrain]/maxmap
 y_train = l_p[0: Ntrain]
-X_test = Maps[:, Ntrain:(Ntrain + Ntest)]
+X_test = Maps[:, Ntrain:(Ntrain + Ntest)]/maxmap
 y_test = l_p[Ntrain: (Ntrain + Ntest)]
 
 num_classes = 1
@@ -149,5 +150,5 @@ print('error :', error)
 kr.models.save_model(model, out_dir + today + '_model.h5py.File')
 
 #np.save(out_dir + today + '_prediction', prediction)
-np.save(out_dir + today + '_hista_loss', hista.history['loss'])
-np.save(out_dir + today + '_hista_val_loss', hista.history['val_loss'])
+np.save(out_dir + today + '_hist_loss', hista.history['loss'])
+np.save(out_dir + today + '_hist_val_loss', hista.history['val_loss'])
