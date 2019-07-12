@@ -44,7 +44,7 @@ print('l_p mean, std and max : {0} {1} {2}'.format(moy_l_p, ecart_l_p, max_lp))
 
 # Create spectra (Cl) and associated maps
 sigma_p = 5.0
-l = np.linspace(0.0, 40.0, 2000)
+l = np.arange(41)
 print('l shape = {}'.format(l.shape))
 C_l = np.empty((len(l), nmap))
 Maps = np.empty((12 * nside ** 2, nmap))
