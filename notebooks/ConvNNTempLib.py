@@ -1,6 +1,7 @@
 import keras as kr
 import healpy as hp
 import nnhealpix
+import nnhealpix.layers
 import numpy as np
 import math
 import camb
@@ -119,7 +120,7 @@ def NormalizeMaps(Maps):
     MapsNorm = (Maps-np.mean(Maps))/np.std(Maps)
     return MapsNorm
 
-def PreprocessML(inp, out, Ntest, Ntrain, sigma_n):
+def PreprocessML(inp, outp, Ntest, Ntrain, sigma_n):
     """
     Prepare the data for the ML with ND inputs and outputs
     N>2
@@ -152,30 +153,33 @@ def PreprocessML(inp, out, Ntest, Ntrain, sigma_n):
     shape: a turple with the shape of ONE input map.
     """
     
-    Nmodel = out.shape[0]
+    Nmodel = outp.shape[0]
     if Ntest != int(Ntest) and Ntest >= 0.0 and Ntest <= 1.0:
         Ntest = int(Ntest*Nmodel)
+        print("Ntest={}".format(Ntest))
     if Ntrain != int(Ntrain) and Ntrain >= 0.0 and Ntrain <= 1.0:
         Ntrain = int(Ntrain*Nmodel)
+        print("Ntest={}".format(Ntest))
     
     inp = AddWhiteNoise(inp, sigma_n)
-    if len(out.shape) == 1:
+    if len(outp.shape) == 1:
         num_out=1
+        outp = outp.reshape(outp.shape[0], 1)
     else:
-        out = out.T
-        num_out = out.shape[1]
+        outp = outp.T
+        num_out = outp.shape[1]
         
     # Split between train and test
     inp = NormalizeMaps(inp)
     X_train = inp[:,:Ntrain]
-    y_train = out[0:Ntrain,:]
+    y_train = outp[0:Ntrain,:]
     X_test = inp[:,Ntrain:(Ntrain+Ntest)]
-    y_test = out[Ntrain:(Ntrain+Ntest),:]
+    y_test = outp[Ntrain:(Ntrain+Ntest),:]
     
     X_train = X_train.T
     X_test = X_test.T
-    X_train = X_train.reshape(X_train.shape[0], len(X_train[0]), 1)
-    X_test = X_test.reshape(X_test.shape[0], len(X_test[0]), 1)
+    X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
+    X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], 1)
     
     shape = (len(inp[:, 0]), 1)
     
@@ -281,9 +285,31 @@ def ConvNNhealpix(shape, nside, num_out):
     
     return inputs, out
 
-def MakeAndTrainModel(inputs, out, X_train, y_train, X_test, y_test, out_dir, today):
+def MakeAndTrainModel(inputs, out, X_train, y_train, X_test, y_test, epoch, batch_size, out_dir, today=None):
     """
     Create a model from a Network, show this network and train the model.
+    =================== Parameters ================================
+    inputs:
+    
+    out:
+        
+    Xtrain:
+        
+    y_train:
+        
+    X_test:
+        
+    y_test:
+        
+    epoch:
+        
+    batch_size:
+        
+    out_dir,
+    
+    today
+    =================== Results ===================================
+    
     """
     model = kr.models.Model(inputs=inputs, outputs=out)
     model.compile(loss=kr.losses.mse,
@@ -409,7 +435,7 @@ def PlotChi2(pred, y_test):
     plt.show()
     return
 
-def PlotInOnOut1D(pred, y_test, Nside):
+def PlotInOnOut1D(pred, y_test):
     """
     ================= Parameters ==================
     pred: A 1D array or a list with the data predict by a model
@@ -421,7 +447,7 @@ def PlotInOnOut1D(pred, y_test, Nside):
     fig= plt.figure(1, figsize=(10,10))
     plt.plot(y_test,pred,' ', marker='.', label= "20ep", color = 'blue')
     #plt.plot(ytest,pred2,' ', marker='.', label= "30ep", color = 'red')
-    plt.plot(np.linspace(min(y_test),max(y_test),2*Nside), np.linspace(min(y_test),max(y_test),2*Nside), lw=2, label = "Expected", color = 'green')
+    plt.plot(np.linspace(min(y_test),max(y_test),int(max(y_test)-min(y_test))+1), np.linspace(min(y_test),max(y_test),int(max(y_test)-min(y_test))+1), lw=2, label = "Expected", color = 'green')
     plt.xlabel("Test data")
     plt.ylabel("Predicted data")
     plt.legend(loc=4)
