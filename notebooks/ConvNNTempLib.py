@@ -25,17 +25,20 @@ def CreateGaussianMapsAndCl(Nmodel, sigma_p, Nside):
     
     Maps: Healpix maps of the gaussian spectra
     """
+    
     lp_min=5.0
-    lp_max= 2.0*Nside
-    l_p = np.random.random_sample(lp_min, lp_max, Nmodel)
+    lp_max= 2*Nside
+    np.random.seed()
+    l_p = np.random.uniform(lp_min, lp_max, Nmodel)
     
     l = np.arange(2*lp_max)
-    C_l = np.empty((len(l), Nmodel))
-    Maps = np.empty((12 * Nside ** 2, Nmodel))
+    C_l = np.empty((Nmodel, len(l)))
+    Maps = np.empty((Nmodel, 12 * Nside ** 2))
     
     for j in range (len(l_p)):
-        C_l[:, j] = stats.norm.pdf(l, l_p[j], sigma_p) + 10.**(-5)
-        Maps[:, j] = hp.sphtfunc.synfast(C_l[:, j], Nside, verbose = 0)
+        C_l[j, :] = stats.norm.pdf(l, l_p[j], sigma_p) + 10.**(-5)
+        C_l[j, :] = C_l[j, :]/(max(C_l[j, :]))
+        Maps[j, :] = hp.sphtfunc.synfast(C_l[j, :], Nside, verbose = 0)
     
     return l_p, C_l, Maps
 
@@ -120,7 +123,37 @@ def NormalizeMaps(Maps):
     MapsNorm = (Maps-np.mean(Maps))/np.std(Maps)
     return MapsNorm
 
-def PreprocessML(inp, outp, Ntest, Ntrain, sigma_n):
+def MakePatchMaps(Maps, theta, phi, r):
+    """
+    Transform a set of maps of the full sky in a set of map of a sky patch
+    ============ Parameters ==============================
+    Maps: A 2D array, the set of maps of the full sky, first indice is the number of the map
+        second indice is the number of the pixel on the map.
+    
+    theta: A float, the angle in radiant for the center of the patch
+    
+    phi: A float, the angle in radiant for the center of the patch
+    
+    r: A float, the radius of the patch in degree
+    ============ Return ==================================
+    map_patch: A 2D array, the set of maps of a sky patch, first indice is the number of the map
+        second indice is the number of the pixel on the map.
+    """
+    
+    theta = 3*np.pi/4
+    phy = np.pi/2
+    vec=hp.ang2vec(theta, phy)
+    
+    Nside = hp.npix2nside(Maps.shape[1])
+    #make the map with only the patch from full maps
+    patch = hp.query_disc(Nside, vec, r=np.radians(r))
+    map_patch = np.full((Maps.shape[0],Maps.shape[1]), hp.UNSEEN)
+    for i in range (Maps.shape[0]):
+        map_patch[i, patch] = Maps[i, patch]
+    
+    return map_patch
+
+def PreprocessML(inp, outp, Ntest, Ntrain, sigma_n, patch=False, theta=0, phi=0, r=0):
     """
     Prepare the data for the ML with ND inputs and outputs
     N>2
@@ -128,8 +161,8 @@ def PreprocessML(inp, outp, Ntest, Ntrain, sigma_n):
     inp:A 2D array of float, The last axis is for separate the different data.
         The input of the machine learning
         
-    out: An 1D array of float. The last axis give de i-th data.
-    /!\ inp.shape[1] must be equal to out.shape[0]
+    outp: An 1D array of float. The last axis give de i-th data.
+    /!\ inp.shape[1] must be equal to outp.shape[0]
     
     Ntest: An integer or a float between 0 and 1. The number or quantity of validation input and outputs.
     
@@ -159,7 +192,7 @@ def PreprocessML(inp, outp, Ntest, Ntrain, sigma_n):
         print("Ntest={}".format(Ntest))
     if Ntrain != int(Ntrain) and Ntrain >= 0.0 and Ntrain <= 1.0:
         Ntrain = int(Ntrain*Nmodel)
-        print("Ntest={}".format(Ntest))
+        print("Ntrain={}".format(Ntrain))
     
     inp = AddWhiteNoise(inp, sigma_n)
     if len(outp.shape) == 1:
@@ -168,16 +201,18 @@ def PreprocessML(inp, outp, Ntest, Ntrain, sigma_n):
     else:
         outp = outp.T
         num_out = outp.shape[1]
-        
-    # Split between train and test
+    
     inp = NormalizeMaps(inp)
+    if patch==True:
+        Nside = int(np.sqrt(inp.shape[0] / 12))
+        inp = MakePatchMaps(inp, theta, phi, r, Nside)
+    
+    # Split between train and test
     X_train = inp[:,:Ntrain]
     y_train = outp[0:Ntrain,:]
     X_test = inp[:,Ntrain:(Ntrain+Ntest)]
     y_test = outp[Ntrain:(Ntrain+Ntest),:]
     
-    X_train = X_train.T
-    X_test = X_test.T
     X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
     X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], 1)
     
@@ -185,7 +220,7 @@ def PreprocessML(inp, outp, Ntest, Ntrain, sigma_n):
     
     return X_train, y_train, X_test, y_test, num_out, shape
 
-def PreprocessNDimML(inp, out, Ntest, Ntrain):
+def PreprocessNDimML(inp, outp, Ntest, Ntrain):
     """
     Prepare the data for the ML with ND inputs and outputs
     N>2
@@ -193,7 +228,7 @@ def PreprocessNDimML(inp, out, Ntest, Ntrain):
     inp:A ND array of float, The last axis is for separate the different data.
         The input of the machine learning
         
-    out: An ND array of float. The last axis give de i-th l_p,C_l or other.
+    outp: An ND array of float. The last axis give de i-th l_p,C_l or other.
     /!\ inp.shape[1] must be equal to out.shape[0]
     
     Ntest: An integer or a float between 0 and 1. The number or quantity of validation input and outputs
@@ -223,18 +258,16 @@ def PreprocessNDimML(inp, out, Ntest, Ntrain):
         Ntrain = int(Ntrain*Nmodel)
     
     num_out = 0
-    for i in range (len(out.shape)-1):
-        num_out += out.shape[i]
+    for i in range (len(outp.shape)-1):
+        num_out += outp.shape[i]
     
-    inp=np.moveaxis(inp, len(inp.shape)-1, 0)
-    out=np.moveaxis(out, len(out.shape)-1, 0)
     inp = NormalizeMaps(inp)
     # Split between train and test
     mod_range=np.arange(Nmodel)
     X_train = np.compress(mod_range[:Ntrain],inp,axis=0)
-    y_train = np.compress(mod_range[0:Ntrain],out,axis=0)
+    y_train = np.compress(mod_range[0:Ntrain],outp,axis=0)
     X_test = np.compress(mod_range[Ntrain:(Ntrain+Ntest)],inp,axis=0)
-    y_test = np.compress(mod_range[Ntrain:(Ntrain+Ntest)],out,axis=0)
+    y_test = np.compress(mod_range[Ntrain:(Ntrain+Ntest)],outp,axis=0)
     
     shape = X_train.shape[1:]
     
@@ -270,14 +303,14 @@ def ConvNNhealpix(shape, nside, num_out):
                                             kernel_size=9)(x)
         x = kr.layers.Activation('relu')(x)
         # Degrade
-        x = nnhealpix.layers.MaxPooling(int(nside / (2 ** i)),
+        x = nnhealpix.layers.AveragePooling(int(nside / (2 ** i)),
                                         int(nside / (2 ** (i + 1))))(x)
     
     # End of the NBBs
     
     x = kr.layers.Dropout(0.2)(x)
     x = kr.layers.Flatten()(x)
-    x = kr.layers.Dense(48)(x)
+    x = kr.layers.Dense(256)(x)
     x = kr.layers.Activation('relu')(x)
     x = kr.layers.Dense(num_out)(x)
     
@@ -289,27 +322,33 @@ def MakeAndTrainModel(inputs, out, X_train, y_train, X_test, y_test, epoch, batc
     """
     Create a model from a Network, show this network and train the model.
     =================== Parameters ================================
-    inputs:
+    inputs: The inputs for the first layer of the Network.
     
-    out:
+    out: the last layer of the network of num_out neurons.
         
-    Xtrain:
-        
-    y_train:
-        
-    X_test:
-        
-    y_test:
-        
-    epoch:
-        
-    batch_size:
-        
-    out_dir,
+    X_train: A 3D array of float, the training input data.
     
-    today
+    y_train: A 1 or 2D array or list of float, the training output data.
+    
+    X_test: A 3D array of float, the validation input data.
+    
+    y_test: A 1 or 2D array of float, the validation output data.
+        
+    epoch: An integer, the number of epoch.
+        
+    batch_size: An integer, the batch size.
+        
+    out_dir: A string, the repository of the saved weights.
+    
+    today: Optional string of caractère to name the weights.
     =================== Results ===================================
+    model: A trained model
     
+    hist: the history of the training containing the losses, the validation losses etc.
+    
+    loss: A list or 1D array of float, the loss through epoch.
+    
+    val_loss: A list or 1D array of float, the validation loss through epoch.    
     """
     model = kr.models.Model(inputs=inputs, outputs=out)
     model.compile(loss=kr.losses.mse,
@@ -336,8 +375,8 @@ def MakeAndTrainModel(inputs, out, X_train, y_train, X_test, y_test, epoch, batc
     # Model training
     # model._ckpt_saved_epoch = None
     hist = model.fit(X_train, y_train,
-                     epochs=20,
-                     batch_size=32,
+                     epochs=epoch,
+                     batch_size=batch_size,
                      validation_data=(X_test, y_test),
                      verbose=1,
                      callbacks=callbacks,
@@ -402,8 +441,8 @@ def PlotError(pred, y_test):
     err = (pred-y_test)/y_test*100
     mean_err = np.mean(abs(err))
     print('Mean relative error: ', mean_err)
-    if len(pred.shape) != 1 or pred.shape[1:] != 1:
-        err=np.ravel(err)
+    #if len(pred.shape) != 1 or pred.shape[1:] != 1:
+    err=np.ravel(err)
     fig = plt.figure(1, figsize=(10,10))
     plt.hist(err, bins=100, alpha=0.5, label='err', color = 'blue')
     plt.title("Histogram of the error between the predicted and expected data")
