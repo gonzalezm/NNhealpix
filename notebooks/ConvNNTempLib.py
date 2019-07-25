@@ -12,33 +12,38 @@ def CreateGaussianMapsAndCl(Nmodel, sigma_p, Nside):
     """
     Create Gaussian spectra and Healpix Maps with them.
     ========= Parameters ========================
-    Nmodel: An integer, the number of C_l, l_p and Maps needed
+    Nmodel: An integer, the number of C_l, l_p and Maps needed.
     
-    sigma: The standard deviation of the gaussian
+    sigma: A float or an integer, the standard deviation of the gaussian.
     
-    Nside: An integer and power of 2, Give the resolution of the final maps
+    Nside: An integer and power of 2, Give the resolution of the final maps.
     
     ========= Return ==========================
     l_p: A list of float, the gaussians means
     
-    C_l: A 2D array of float, the gaussian points
+    C_l: A 2D array, the set of gaussian spectra, first indice is the number of the spectrum
+        second indice is the value of the spectrum.
     
-    Maps: Healpix maps of the gaussian spectra
+    Maps: A 2D array, the set of maps of the full sky, first indice is the number of the map
+        second indice is the number of the pixel on the map.
     """
     
-    lp_min=5.0
-    lp_max= 2*Nside
-    np.random.seed()
-    l_p = np.random.uniform(lp_min, lp_max, Nmodel)
+    def gaussian(x, mu, sig):
+        return np.exp(-np.power(x - mu, 2.)/(2 * np.power(sig, 2.)))+1e-5
     
-    l = np.arange(2*lp_max)
-    C_l = np.empty((Nmodel, len(l)))
-    Maps = np.empty((Nmodel, 12 * Nside ** 2))
+    ell = np.arange(4*Nside)
     
-    for j in range (len(l_p)):
-        C_l[j, :] = stats.norm.pdf(l, l_p[j], sigma_p) + 10.**(-5)
-        C_l[j, :] = C_l[j, :]/(max(C_l[j, :]))
-        Maps[j, :] = hp.sphtfunc.synfast(C_l[j, :], Nside, verbose = 0)
+    Maps = np.zeros((Nmodel, hp.nside2npix(Nside)))
+    C_l = np.zeros((Nmodel,len(ell)))
+    l_p = np.zeros(Nmodel)
+    
+    for i in range(Nmodel):
+        np.random.seed()
+        ellp = np.random.uniform(5., 2.*Nside)
+        cl_val = gaussian(ell, ellp, 5)
+        Maps[i, :] =  hp.synfast(cl_val, Nside, verbose=0)
+        C_l[i,:] = cl_val
+        l_p[i] = ellp
     
     return l_p, C_l, Maps
 
@@ -51,11 +56,14 @@ def CreateRealisticData(Nmodels, Nside):
     Nside: The resolution of the maps created
     
     ================ Return ====================================
-    mymaps: A 2D array of float, realistic CMB maps.
+    mymaps: A 2D array, the set of maps of the full sky, first indice is the number of the map
+        second indice is the number of the pixel on the map, realistic CMB maps.
     
-    mycls: A 2D array of float, realistic spectra.
+    mycls: A 2D array, the set of realistic spectra, first indice is the number of the spectrum
+        second indice is the value of the spectrum.
     
-    expcls: A 2D array of float, spectra obtained by anafast.
+    expcls: A 2D array, the set of anafast spectra, first indice is the number of the spectrum
+        second indice is the value of the spectrum.
     
     myalms: An array of complex obtained by anafast.
     """
@@ -102,12 +110,14 @@ def AddWhiteNoise(inp,sigma_n):
     """
     Add a gaussian white noise on the map
     ============ Parameters =================
-    inp: A 2D array of float, the map which will have noise added
+    inp: A 2D array, the set of maps of the full sky, first indice is the number of the map
+        second indice is the number of the pixel on the map.
     
     sigma_n: A float, the standard deviation of the gaussian noise
     
     ============ Return ====================
-    inp_n: A 2D array, maps with white noise
+    inp_n: A 2D array, the set of maps of the full sky, first indice is the number of the map
+        second indice is the number of the pixel on the map, maps with white noise
     """
     inp_n = inp + np.random.randn(inp.shape[0],inp.shape[1])*sigma_n
     return inp_n
@@ -158,11 +168,12 @@ def PreprocessML(inp, outp, Ntest, Ntrain, sigma_n, patch=False, theta=0, phi=0,
     Prepare the data for the ML with ND inputs and outputs
     N>2
     ========= Parameters ===============
-    inp:A 2D array of float, The last axis is for separate the different data.
+    inp:A 2D array, the set of maps of the full sky, first indice is the number of the map
+        second indice is the number of the pixel on the map.
         The input of the machine learning
         
-    outp: An 1D array of float. The last axis give de i-th data.
-    /!\ inp.shape[1] must be equal to outp.shape[0]
+    outp: An 1 or 2-D array of float or integer.
+    /!\ inp.shape[0] must be equal to outp.shape[0]
     
     Ntest: An integer or a float between 0 and 1. The number or quantity of validation input and outputs.
     
@@ -194,84 +205,81 @@ def PreprocessML(inp, outp, Ntest, Ntrain, sigma_n, patch=False, theta=0, phi=0,
         Ntrain = int(Ntrain*Nmodel)
         print("Ntrain={}".format(Ntrain))
     
-    inp = AddWhiteNoise(inp, sigma_n)
+#    inp = AddWhiteNoise(inp, sigma_n)
     if len(outp.shape) == 1:
-        num_out=1
         outp = outp.reshape(outp.shape[0], 1)
-    else:
-        outp = outp.T
-        num_out = outp.shape[1]
+    num_out = outp.shape[1]
     
-    inp = NormalizeMaps(inp)
+#    inp = NormalizeMaps(inp)
     if patch==True:
         Nside = int(np.sqrt(inp.shape[0] / 12))
         inp = MakePatchMaps(inp, theta, phi, r, Nside)
     
     # Split between train and test
-    X_train = inp[:,:Ntrain]
+    X_train = inp[:Ntrain,:]
     y_train = outp[0:Ntrain,:]
-    X_test = inp[:,Ntrain:(Ntrain+Ntest)]
+    X_test = inp[Ntrain:(Ntrain+Ntest),:]
     y_test = outp[Ntrain:(Ntrain+Ntest),:]
     
     X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
     X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], 1)
     
-    shape = (len(inp[:, 0]), 1)
+    shape = (inp.shape[1], 1)
     
     return X_train, y_train, X_test, y_test, num_out, shape
 
-def PreprocessNDimML(inp, outp, Ntest, Ntrain):
-    """
-    Prepare the data for the ML with ND inputs and outputs
-    N>2
-    ========= Parameters ===============
-    inp:A ND array of float, The last axis is for separate the different data.
-        The input of the machine learning
-        
-    outp: An ND array of float. The last axis give de i-th l_p,C_l or other.
-    /!\ inp.shape[1] must be equal to out.shape[0]
-    
-    Ntest: An integer or a float between 0 and 1. The number or quantity of validation input and outputs
-    
-    Ntest: An integer or a float between 0 and 1. The number or quantity of training input and outputs
-    
-    /!\ if float: Ntest+Ntrain<=1
-    /!\ if integer: Ntest+Ntrain<= Maps.shape[1]
-    ========= Return ==================
-    X_train: A ND array of float, the training input data
-    
-    y_train: A ND array or list of float, the training output data
-    
-    X_test: A ND array of float, the validation input data
-    
-    y_test: A ND array of float, the validation output data
-    
-    num_out: integer, the number of neuron of the output layer, it depends on the situation.
-    
-    shape: a turple with the shape of ONE input map.
-    """
-    
-    Nmodel = inp.shape[len(inp.shape)-1]
-    if Ntest != int(Ntest) and Ntest >= 0.0 and Ntest <= 1.0:
-        Ntest = int(Ntest*Nmodel)
-    if Ntrain != int(Ntrain) and Ntrain >= 0.0 and Ntrain <= 1.0:
-        Ntrain = int(Ntrain*Nmodel)
-    
-    num_out = 0
-    for i in range (len(outp.shape)-1):
-        num_out += outp.shape[i]
-    
-    inp = NormalizeMaps(inp)
-    # Split between train and test
-    mod_range=np.arange(Nmodel)
-    X_train = np.compress(mod_range[:Ntrain],inp,axis=0)
-    y_train = np.compress(mod_range[0:Ntrain],outp,axis=0)
-    X_test = np.compress(mod_range[Ntrain:(Ntrain+Ntest)],inp,axis=0)
-    y_test = np.compress(mod_range[Ntrain:(Ntrain+Ntest)],outp,axis=0)
-    
-    shape = X_train.shape[1:]
-    
-    return X_train, y_train, X_test, y_test, num_out, shape
+#def PreprocessNDimML(inp, outp, Ntest, Ntrain):
+#    """
+#    Prepare the data for the ML with ND inputs and outputs
+#    N>2
+#    ========= Parameters ===============
+#    inp:A ND array of float, The last axis is for separate the different data.
+#        The input of the machine learning
+#        
+#    outp: An ND array of float. The last axis give de i-th l_p,C_l or other.
+#    /!\ inp.shape[1] must be equal to out.shape[0]
+#    
+#    Ntest: An integer or a float between 0 and 1. The number or quantity of validation input and outputs
+#    
+#    Ntest: An integer or a float between 0 and 1. The number or quantity of training input and outputs
+#    
+#    /!\ if float: Ntest+Ntrain<=1
+#    /!\ if integer: Ntest+Ntrain<= Maps.shape[1]
+#    ========= Return ==================
+#    X_train: A ND array of float, the training input data
+#    
+#    y_train: A ND array or list of float, the training output data
+#    
+#    X_test: A ND array of float, the validation input data
+#    
+#    y_test: A ND array of float, the validation output data
+#    
+#    num_out: integer, the number of neuron of the output layer, it depends on the situation.
+#    
+#    shape: a turple with the shape of ONE input map.
+#    """
+#    
+#    Nmodel = inp.shape[len(inp.shape)-1]
+#    if Ntest != int(Ntest) and Ntest >= 0.0 and Ntest <= 1.0:
+#        Ntest = int(Ntest*Nmodel)
+#    if Ntrain != int(Ntrain) and Ntrain >= 0.0 and Ntrain <= 1.0:
+#        Ntrain = int(Ntrain*Nmodel)
+#    
+#    num_out = 0
+#    for i in range (len(outp.shape)-1):
+#        num_out += outp.shape[i]
+#    
+#    inp = NormalizeMaps(inp)
+#    # Split between train and test
+#    mod_range=np.arange(Nmodel)
+#    X_train = np.compress(mod_range[:Ntrain],inp,axis=0)
+#    y_train = np.compress(mod_range[0:Ntrain],outp,axis=0)
+#    X_test = np.compress(mod_range[Ntrain:(Ntrain+Ntest)],inp,axis=0)
+#    y_test = np.compress(mod_range[Ntrain:(Ntrain+Ntest)],outp,axis=0)
+#    
+#    shape = X_train.shape[1:]
+#    
+#    return X_train, y_train, X_test, y_test, num_out, shape
 
 
 def ConvNNhealpix(shape, nside, num_out):
@@ -318,7 +326,12 @@ def ConvNNhealpix(shape, nside, num_out):
     
     return inputs, out
 
-def MakeAndTrainModel(inputs, out, X_train, y_train, X_test, y_test, epoch, batch_size, out_dir, today=None):
+def MakeAndTrainModel(X_train, y_train,
+                      X_test, y_test,
+                      epoch, batch_size,
+                      out_dir, today=None,
+                      inputs=None, out=None,
+                      retrain=False, model=None):
     """
     Create a model from a Network, show this network and train the model.
     =================== Parameters ================================
@@ -350,10 +363,11 @@ def MakeAndTrainModel(inputs, out, X_train, y_train, X_test, y_test, epoch, batc
     
     val_loss: A list or 1D array of float, the validation loss through epoch.    
     """
-    model = kr.models.Model(inputs=inputs, outputs=out)
-    model.compile(loss=kr.losses.mse,
-                  optimizer='adam',
-                  metrics=[kr.metrics.mean_absolute_percentage_error])
+    if retrain == False:
+        model = kr.models.Model(inputs=inputs, outputs=out)
+        model.compile(loss=kr.losses.mse,
+                      optimizer='adam',
+                      metrics=[kr.metrics.mean_absolute_percentage_error])
     model.summary()
     
     # Callbacks
@@ -361,7 +375,7 @@ def MakeAndTrainModel(inputs, out, X_train, y_train, X_test, y_test, epoch, batc
                                                     monitor='val_loss',
                                                     verbose=1,
                                                     save_best_only=True,
-                                                    save_weights_only=True,
+                                                    save_weights_only=False,
                                                     mode='min',
                                                     period=1)
     
@@ -396,6 +410,8 @@ def PlotLosses(loss, val_loss):
     ========= Return ===========================
     Show the loss and the validation loss
     """
+    print("min loss=", min(loss))
+    print("min validation loss=", min(val_loss))
     
     fig = plt.figure(1, figsize=(10,10))
     plt.plot(loss, ':', color = 'blue', label = "loss")
@@ -438,10 +454,9 @@ def PlotError(pred, y_test):
     
     Show the plot of the error histogram
     """
-    err = (pred-y_test)/y_test*100
+    err = (pred[:,:]-y_test[:,:])#/y_test[:,:]*100.
     mean_err = np.mean(abs(err))
-    print('Mean relative error: ', mean_err)
-    #if len(pred.shape) != 1 or pred.shape[1:] != 1:
+    print('Mean error: ', mean_err)
     err=np.ravel(err)
     fig = plt.figure(1, figsize=(10,10))
     plt.hist(err, bins=100, alpha=0.5, label='err', color = 'blue')
@@ -485,7 +500,6 @@ def PlotInOnOut1D(pred, y_test):
     """
     fig= plt.figure(1, figsize=(10,10))
     plt.plot(y_test,pred,' ', marker='.', label= "20ep", color = 'blue')
-    #plt.plot(ytest,pred2,' ', marker='.', label= "30ep", color = 'red')
     plt.plot(np.linspace(min(y_test),max(y_test),int(max(y_test)-min(y_test))+1), np.linspace(min(y_test),max(y_test),int(max(y_test)-min(y_test))+1), lw=2, label = "Expected", color = 'green')
     plt.xlabel("Test data")
     plt.ylabel("Predicted data")
