@@ -163,7 +163,7 @@ def MakePatchMaps(Maps, theta, phi, r):
     
     return map_patch
 
-def PreprocessML(inp, outp, Ntest, Ntrain, sigma_n, patch=False, theta=0, phi=0, r=0):
+def PreprocessML(inp, outp, Ntest, Ntrain, patch=False, theta=0, phi=0, r=0):
     """
     Prepare the data for the ML with ND inputs and outputs
     N>2
@@ -183,6 +183,14 @@ def PreprocessML(inp, outp, Ntest, Ntrain, sigma_n, patch=False, theta=0, phi=0,
     /!\ if integer: Ntest+Ntrain<= Maps.shape[1]
     
     sigma_n: A float or an integer, the standard deviation of the gaussian white noise.
+    
+    patch: say if you want a patch of the sky (True) or the full sky (False)
+    
+    theta: A float, the angle in radiant for the center of the patch
+    
+    phi: A float, the angle in radiant for the center of the patch
+    
+    r: A float, the radius of the patch in degree
     ========= Return ==================
     X_train: A 3D array of float, the training input data
     
@@ -205,15 +213,12 @@ def PreprocessML(inp, outp, Ntest, Ntrain, sigma_n, patch=False, theta=0, phi=0,
         Ntrain = int(Ntrain*Nmodel)
         print("Ntrain={}".format(Ntrain))
     
-#    inp = AddWhiteNoise(inp, sigma_n)
     if len(outp.shape) == 1:
         outp = outp.reshape(outp.shape[0], 1)
     num_out = outp.shape[1]
     
-#    inp = NormalizeMaps(inp)
     if patch==True:
-        Nside = int(np.sqrt(inp.shape[0] / 12))
-        inp = MakePatchMaps(inp, theta, phi, r, Nside)
+        inp = MakePatchMaps(inp, theta, phi, r)
     
     # Split between train and test
     X_train = inp[:Ntrain,:]
@@ -335,9 +340,6 @@ def MakeAndTrainModel(X_train, y_train,
     """
     Create a model from a Network, show this network and train the model.
     =================== Parameters ================================
-    inputs: The inputs for the first layer of the Network.
-    
-    out: the last layer of the network of num_out neurons.
         
     X_train: A 3D array of float, the training input data.
     
@@ -354,6 +356,14 @@ def MakeAndTrainModel(X_train, y_train,
     out_dir: A string, the repository of the saved weights.
     
     today: Optional string of caractère to name the weights.
+    
+    inputs: The inputs for the first layer of the Network.
+    
+    out: the last layer of the network of num_out neurons.
+    
+    retrain: Say if there was a training on a pre-existing model.
+    
+    model: the model pre-existing if retrain==True.
     =================== Results ===================================
     model: A trained model
     
@@ -483,7 +493,7 @@ def PlotChi2(pred, y_test):
     chi2 = np.sum((pred-y_test)**2, axis = 1)
     fig= plt.figure(1, figsize=(10,10))
     plt.hist(chi2, color = "blue", bins=100, alpha=0.5, label='$\chi²$')
-    plt.yscale('log')
+#    plt.yscale('log')
     plt.title("$\chi^2$")
     plt.legend(loc=1)
     plt.show()
