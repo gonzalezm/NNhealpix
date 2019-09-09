@@ -3,7 +3,6 @@ import keras as kr
 import sys
 import datetime
 import nnhealpix
-import healpix
 import os
 
 # Directory selection

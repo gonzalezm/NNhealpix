@@ -1,8 +1,9 @@
-from ConvNNTempLib import CreateGaussianMapsAndCl
 import numpy as np
 import os
 import sys
 import datetime
+
+import ConvNNTempLib as cnn
 
 name = sys.argv[1]
 
@@ -11,12 +12,11 @@ dir = sys.argv[2]
 today = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
 out_dir = dir + '/{}/'.format(today)
 
-Nmodel = sys.argv[3]
+Nmodel = int(sys.argv[3])
 sigma_p = 5
 Nside = 16
 
-l_p, C_l, Maps = CreateGaussianMapsAndCl(Nmodel, sigma_p, Nside)
-
+l_p, C_l, Maps = cnn.CreateGaussianMapsAndCl(Nmodel, sigma_p, Nside)
 
 try:
     os.makedirs(out_dir)
