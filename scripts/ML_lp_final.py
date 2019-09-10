@@ -6,30 +6,18 @@ import os
 import datetime
 import ConvNNTempLib as cnn
 
-# Take in arguments path where find the data and path where save new data.
-# Take the name given during the creation of data
-name_in = sys.argv[1]
-in_dir = sys.argv[2]
-out_dir = sys.argv[3]
+# This program is design to find the mean of a gaussian spectrum
+# from a CMB map based on gaussian spectrum
+# It saves data from training, prediction done by the model and the model itself
+
+# Arguments
+name_in = sys.argv[1] # Name given to data you want to load
+in_dir = sys.argv[2] # Directory path for loading data
+out_dir = sys.argv[3] # Directory path for saving results
 
 # Add date and time to the path to save to avoid "same name file" problems.
 today = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
 out_dir += '/{}/'.format(today)
-
-# Load the data
-l_p = np.load(in_dir + "/" + name_in + "_l_p.npy")
-Maps = np.load(in_dir + "/" + name_in + "_Maps.npy")
-
-Ntest = 0.1
-Ntrain = 1 - Ntest
-sigma_n = float(sys.argv[4])
-Nside = hp.npix2nside(Maps.shape[1])
-
-Maps = cnn.AddWhiteNoise(Maps, sigma_n)
-Maps = cnn.NormalizeMaps(Maps)
-X_train, y_train, X_test, y_test, num_out, shape = cnn.PreprocessML(Maps, l_p, Ntest, Ntrain)
-
-inputs, out = cnn.ConvNNhealpix(shape, Nside, num_out)
 
 # Creat the repository where save new data
 try:
@@ -37,6 +25,28 @@ try:
 except:
     pass
 
+# Load the data
+l_p = np.load(in_dir + "/" + name_in + "_l_p.npy")
+Maps = np.load(in_dir + "/" + name_in + "_Maps.npy")
+print('Maps shape :', Maps.shape)
+
+# Get Nside
+Nside = hp.npix2nside(Maps.shape[1])
+
+# Add noise and normalize the maps
+sigma_n = 0.
+Maps = cnn.AddWhiteNoise(Maps, sigma_n)
+Maps = cnn.NormalizeMaps(Maps)
+
+# Split train/test data
+Ntest = 0.1
+Ntrain = 1 - Ntest
+X_train, y_train, X_test, y_test, num_out, shape = cnn.PreprocessML(Maps, l_p, Ntest, Ntrain)
+
+# Build all layers that are in the paper
+inputs, out = cnn.ConvNNhealpix(shape, Nside, num_out)
+
+# Creation of the model and training
 model, hist, loss, val_loss = cnn.MakeAndTrainModel(X_train, y_train,
                                                     X_test, y_test,
                                                     epoch=20, batch_size=32,
@@ -44,6 +54,7 @@ model, hist, loss, val_loss = cnn.MakeAndTrainModel(X_train, y_train,
                                                     inputs=inputs, out=out,
                                                     retrain=False)
 
+#Print the final error
 error = model.evaluate(X_test, y_test)
 print('error :', error)
 
