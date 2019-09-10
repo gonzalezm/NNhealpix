@@ -9,48 +9,49 @@ import os
 import ConvNNTempLib as cnn
 
 # Directory selection
-dir = sys.argv[1]
+name = sys.argv[1]  # Maps and lp or Cl
 in1 = sys.argv[2]  # Maps and lp or Cl
 in2 = sys.argv[3]  # model and history
-name = sys.argv[4]  # Maps and lp or Cl
+dir = sys.argv[4] # Directory path for saving results
+
 
 date = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
 out_dir = dir + '{}/'.format(date)
 
+# Creat the repository where save new data
+os.makedirs(out_dir, exist_ok=True)
+
 # Take data
-Maps = np.load(dir + in1 + "/" + name + "_Maps.npy")
+maps = np.load(dir + in1 + "/" + name + "_maps.npy")
 C_l = np.load(dir + in1 + "/" + name + "_C_l.npy")
 
+# Load a model already trained
 with kr.utils.CustomObjectScope({'OrderMap': nnhealpix.layers.OrderMap}):
     model = kr.models.load_model(dir + in2 + "/" + in2 + "_model.h5py.File")
 
-Ntest = 0.1
-Ntrain = 1 - Ntest
+# Get Nside
+nside = hp.npix2nside(maps.shape[1])
+
+# Add noise and normalize the maps
 sigma_n = 0.
-Nside = hp.npix2nside(Maps.shape[1])
+maps = cnn.AddWhiteNoise(maps, sigma_n)
+maps = cnn.NormalizeMaps(maps)
 
 Nmodel = C_l.shape[0]
 # Ntest = int(Ntest*Nmodel)
 # Ntrain = int(Ntrain*Nmodel)
 
-Maps = cnn.AddWhiteNoise(Maps, sigma_n)
-Maps = cnn.NormalizeMaps(Maps)
+ntest = 0.1
+ntrain = 1 - ntest
+x_train, y_train, x_test, y_test, num_out, shape = cnn.PreprocessML(maps, C_l, ntest, ntrain)
 
-X_train, y_train, X_test, y_test, num_out, shape = cnn.PreprocessML(Maps, C_l, Ntest, Ntrain)
-
-# Creat the repository where save new data
-try:
-    os.makedirs(out_dir)
-except:
-    pass
-
-model, hist, loss2, val_loss2 = cnn.MakeAndTrainModel(X_train, y_train,
-                                                  X_test, y_test,
+model, hist, loss2, val_loss2 = cnn.MakeAndTrainModel(x_train, y_train,
+                                                  x_test, y_test,
                                                   epoch=10, batch_size=32,
                                                   out_dir=out_dir, today=date,
                                                   retrain=True, model=model)
 
-error = model.evaluate(X_test, y_test)
+error = model.evaluate(x_test, y_test)
 print('error :', error)
 
 loss1 = np.load(dir + in2 + "/" + in2 + '_hist_loss.npy')
