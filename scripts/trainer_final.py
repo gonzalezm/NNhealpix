@@ -14,7 +14,6 @@ in1 = sys.argv[2]  # Maps and lp or Cl
 in2 = sys.argv[3]  # model and history
 dir = sys.argv[4] # Directory path for saving results
 
-
 date = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
 out_dir = dir + '{}/'.format(date)
 

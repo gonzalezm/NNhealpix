@@ -7,40 +7,45 @@ import math
 import camb
 import matplotlib.pyplot as plt
 
+
 def CreateGaussianMapsAndCl(nmodel, sigma_p, nside):
     """
-    Create Gaussian spectra and Healpix Maps with them.
+    Create Gaussian spectra and associated Healpix maps.
+    Return also the means of the gaussian.
+
     ========= Parameters ========================
-    nmodel: An integer, the number of C_l, l_p and Maps needed.
-    sigma: A float or an integer, the standard deviation of the gaussian.
-    nside: An integer and power of 2, Give the resolution of the final maps.
+    nmodel: int
+        Number of C_l, l_p and Maps you want to create.
+    sigma: float
+        Gaussian standard deviations.
+    nside: int
+        Resolution for the maps, power of 2.
     
     ========= Return ==========================
-    l_p: A list of float, the gaussians means
-    C_l: A 2D array, the set of gaussian spectra, first indice is the number of the spectrum
-        second indice is the value of the spectrum.
-    Maps: A 2D array, the set of maps of the full sky, first indice is the number of the map
-        second indice is the number of the pixel on the map.
+    lp: list, len = 4 x nside
+        Gaussian means random between 5 and 2xnside
+    cl: 2D array
+        Set of gaussian spectra, shape (nmodel, 4 x nside)
+    maps: 2D array
+        Set of maps of the full sky, shape (nmodel, #pixels)
     """
 
     def gaussian(x, mu, sig):
         return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.))) + 1e-5
 
-    ell = np.arange(4 * nside)
+    l = np.arange(4 * nside)
 
-    Maps = np.empty((nmodel, hp.nside2npix(nside)))
-    C_l = np.empty((nmodel, len(ell)))
-    l_p = np.empty(nmodel)
+    maps = np.empty((nmodel, hp.nside2npix(nside)))
+    cl = np.empty((nmodel, len(l)))
+    lp = np.empty(nmodel)
 
     for i in range(nmodel):
         np.random.seed()
-        ellp = np.random.uniform(5., 2. * nside)
-        cl_val = gaussian(ell, ellp, sigma_p)
-        Maps[i, :] = hp.synfast(cl_val, nside, verbose=0)
-        C_l[i, :] = cl_val
-        l_p[i] = ellp
+        lp[i] = np.random.uniform(5., 2. * nside)
+        cl[i, :] = gaussian(l, lp[i], sigma_p)
+        maps[i, :] = hp.synfast(cl[i, :], nside, verbose=0)
 
-    return l_p, C_l, Maps
+    return lp, cl, maps
 
 
 def CreateRealisticData(nmodels, nside):
@@ -48,17 +53,23 @@ def CreateRealisticData(nmodels, nside):
     Create a set of data with realistic maps of CMB, spectra and alm
 
     ============= Parameters ===================================
-    nmodels: An integer, the number of model.
-    nside: The resolution of the maps created
+    nmodels: int
+        Number of models.
+    nside: int
+        The resolution of the maps created
 
     ================ Return ====================================
-    mymaps: A 2D array, the set of maps of the full sky, first indice is the number of the map
+    mymaps: 2D array
+        Set of maps of the full sky, first indice is the number of the map
         second indice is the number of the pixel on the map, realistic CMB maps.
-    mycls: A 2D array, the set of realistic spectra, first indice is the number of the spectrum
+    mycls: 2D array
+        Set of realistic spectra, first indice is the number of the spectrum
         second indice is the value of the spectrum.
-    expcls: A 2D array, the set of anafast spectra, first indice is the number of the spectrum
+    expcls: 2D array
+        Set of anafast spectra, first indice is the number of the spectrum
         second indice is the value of the spectrum.
-    myalms: An array of complex obtained by anafast.
+    myalms: complex array
+        Spectrum computed with anafast.
     """
     pars = camb.CAMBparams()
     pars.set_cosmology(H0=67.5, ombh2=0.022, omch2=0.122, mnu=0.06, omk=0, tau=0.06)
@@ -123,15 +134,21 @@ def NormalizeMaps(map):
     return (map - np.mean(map)) / np.std(map)
 
 
-def MakePatchMaps(maps, theta, phi, r):
+def MakePatchMaps(maps, theta, phi, radius):
     """
     Transform a set of maps of the full sky in a set of map of a sky patch
+
     ============ Parameters ==============================
-    Maps: A 2D array, the set of maps of the full sky, first indice is the number of the map
+    Maps: 2D array
+        Set of maps of the full sky, first indice is the number of the map
         second indice is the number of the pixel on the map.
-    theta: A float, the angle in radian for the center of the patch
-    phi: A float, the angle in radian for the center of the patch
-    r: A float, the radius of the patch in degree
+    theta: float,
+        Angle in radian for the center of the patch
+    phi: float
+        Angle in radian for the center of the patch
+    radius: float
+        Radius of the patch in radian
+
     ============ Return ==================================
     map_patch: A 2D array, the set of maps of a sky patch, first indice is the number of the map
         second indice is the number of the pixel on the map.
@@ -140,7 +157,7 @@ def MakePatchMaps(maps, theta, phi, r):
 
     nside = hp.npix2nside(maps.shape[1])
     # make the map with only the patch from full maps
-    patch = hp.query_disc(nside, vec, r=np.radians(r))
+    patch = hp.query_disc(nside, vec, radius)
     map_patch = np.full((maps.shape[0], maps.shape[1]), hp.UNSEEN)
     for i in range(maps.shape[0]):
         map_patch[i, patch] = maps[i, patch]
@@ -153,26 +170,34 @@ def PreprocessML(inp, outp, ntest, ntrain, patch=False, theta=0, phi=0, r=0):
     Prepare the data for the ML with ND inputs and outputs
 
     ========= Parameters ===============
-    inp:A 2D array, the set of maps of the full sky, first indice is the number of the map
-        second indice is the number of the pixel on the map.
+    inp:2D array
+        Set of maps of the full sky, first index is the number of the map
+        second index is the number of the pixel on the map.
         The input of the machine learning
-    outp: An 1 or 2-D array of float or integer.
+    outp: 1 or 2-D array
           inp.shape[0] must be equal to outp.shape[0]
-    ntest: An integer or a float between 0 and 1. The number or quantity of validation input and outputs.
-    ntest: An integer or a float between 0 and 1. The number or quantity of training input and outputs.
-    sigma_n: A float or an integer, the standard deviation of the gaussian white noise.
-    patch: say if you want a patch of the sky (True) or the full sky (False)
-    theta: A float, the angle in radiant for the center of the patch
-    phi: A float, the angle in radiant for the center of the patch
-    r: A float, the radius of the patch in
+    ntest: float
+        Fraction for validation data between 0 and 1.
+    sigma_n: float
+        She standard deviation of the gaussian white noise.
+    patch: bool
+        Say if you want a patch of the sky (True) or the full sky (False)
+    theta: float,
+        Angle in radian for the center of the patch
+    phi: float
+        Angle in radian for the center of the patch
+    radius: float
+        Radius of the patch in radian
 
     ========= Return ==================
     x_train: A 3D array of float, the training input data
     y_train: A 1 or 2D array or list of float, the training output data
     x_test: A 3D array of float, the validation input data
-    y_test: A 1 or 2D array of float, the validation output data
-    num_out: integer, the number of neuron of the output layer, it depends on the situation.
-    shape: a turple with the shape of ONE input map.
+    y_test: A 1 or 2D array of float, Validation output data
+    num_out: int
+        Number of neurons of the output layer.
+    shape: tuple
+        Shape of ONE input map.
     """
 
     nmodel = outp.shape[0]
@@ -209,13 +234,18 @@ def ConvNNhealpix(shape, nside, num_out):
     Architecture of the Neural Network using the NNhealpix functions
     
     ========= Parameters =============
-    shape: a turple with the shape of ONE input map.
-    nside: integer with the resolution parameter of your input maps, must be a power of 2.
-    num_out: integer, the number of neuron of the output layer, it depends on the situation.
+    shape: tuple
+        Shape of ONE input map.
+    nside: int
+        Resolution parameter of your input maps, must be a power of 2.
+    num_out: int
+        Number of neuron of the output layer.
     
     ========= Return ================
-    inputs: The inputs for the first layer of the Network.
-    out: the last layer of the network of num_out neurons.
+    inputs: keras tensor
+        Input used to build the network.
+    out: keras tensor
+        Last layer of the network.
     """
     inputs = kr.layers.Input(shape)
     x = inputs
@@ -251,38 +281,54 @@ def MakeAndTrainModel(x_train, y_train,
                       epoch, batch_size,
                       out_dir, today=None,
                       inputs=None, out=None,
-                      retrain=False, model=None):
+                      retrain=False, preexisting_model=None):
     """
     Create a model from a Network, show this network and train the model.
 
     =================== Parameters ================================
-    x_train: A 3D array of float, the training input data.
-    y_train: A 1 or 2D array or list of float, the training output data.
-    x_test: A 3D array of float, the validation input data.
-    y_test: A 1 or 2D array of float, the validation output data.
-    epoch: An integer, the number of epoch.
-    batch_size: An integer, the batch size.
-    out_dir: A string, the repository of the saved weights.
-    today: Optional string of caractère to name the weights.
-    inputs: The inputs for the first layer of the Network.
-    out: the last layer of the network of num_out neurons.
-    retrain: Say if there was a training on a pre-existing model.
-    model: the model pre-existing if retrain==True.
+    x_train: 3D array of float
+        Training input data.
+    y_train: A 1 or 2D array or list of float
+        Training output data.
+    x_test: A 3D array of float
+        Validation input data.
+    y_test: A 1 or 2D array of float
+        Validation output data.
+    epoch: int
+        Number of epochs.
+    batch_size: int
+        Batch size.
+    out_dir: str
+        Repository of the saved weights.
+    today: str
+        Name for the weights that will be saved.
+    inputs: keras tensor
+        Input used to build the network if retrain=False.
+    out: keras tensor
+        Last layer of the network if retrain=False.
+    retrain: bool
+        Set True if you want to load a model already trained.
+    preexisting_model: str
+        Path for the pre-existing model if retrain==True.
 
     =================== Results ===================================
     model: A trained model
     hist: the history of the training containing the losses, the validation losses etc.
-    loss: A list or 1D array of float, the loss through epoch.
-    val_loss: A list or 1D array of float, the validation loss through epoch.    
+    loss: 1D array of float, the loss through epoch.
+    val_loss: 1D array of float, the validation loss through epoch.
     """
-    if not retrain:
+    if retrain:
+        with kr.utils.CustomObjectScope({'OrderMap': nnhealpix.layers.OrderMap}):
+            model = kr.models.load_model(preexisting_model)
+    else:
         model = kr.models.Model(inputs=inputs, outputs=out)
         model.compile(loss=kr.losses.mse,
                       optimizer='adam',
                       metrics=[kr.metrics.mean_absolute_percentage_error])
     model.summary()
 
-    # Callbacks
+    # Set the callbacks
+    # Save weights during training
     checkpointer_mse = kr.callbacks.ModelCheckpoint(
         filepath=out_dir + today + '_weights.{epoch:02d}-{val_loss:.2f}.hdf5',
         monitor='val_loss',
@@ -292,6 +338,7 @@ def MakeAndTrainModel(x_train, y_train,
         mode='min',
         period=1)
 
+    # Stop the training if doesn't improve after 20 epochs
     stop = kr.callbacks.EarlyStopping(monitor='val_loss',
                                       verbose=0,
                                       restore_best_weights=True,
@@ -299,8 +346,7 @@ def MakeAndTrainModel(x_train, y_train,
 
     callbacks = [checkpointer_mse, stop]
 
-    # Model training
-    # model._ckpt_saved_epoch = None
+    # Train the model
     hist = model.fit(x_train, y_train,
                      epochs=epoch,
                      batch_size=batch_size,
