@@ -18,7 +18,7 @@ nmodel = int(sys.argv[3])
 sigma_p = 5
 nside = 16
 
-lp, cl, maps = cnn.CreateGaussianMapsAndCl(nmodel, sigma_p, nside)
+lp, cl, maps = cnn.make_maps_with_gaussian_spectra(nmodel, sigma_p, nside)
 
 np.save(out_dir + name + '_lp', lp)
 np.save(out_dir + name + '_cl', cl)
