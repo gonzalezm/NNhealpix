@@ -7,7 +7,7 @@ import math
 import camb
 
 
-def CreateGaussianMapsAndCl(nmodel, sigma_p, nside):
+def make_maps_with_gaussian_spectra(nmodel, sigma_p, nside):
     """
     Create Gaussian spectra and associated Healpix maps.
     Return also the means of the gaussian.
@@ -32,22 +32,22 @@ def CreateGaussianMapsAndCl(nmodel, sigma_p, nside):
     def gaussian(x, mu, sig):
         return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.))) + 1e-5
 
-    l = np.arange(4 * nside)
+    ll = np.arange(4 * nside)
 
     maps = np.empty((nmodel, hp.nside2npix(nside)))
-    cl = np.empty((nmodel, len(l)))
+    cl = np.empty((nmodel, len(ll)))
     lp = np.empty(nmodel)
 
     for i in range(nmodel):
         np.random.seed()
         lp[i] = np.random.uniform(5., 2. * nside)
-        cl[i, :] = gaussian(l, lp[i], sigma_p)
+        cl[i, :] = gaussian(ll, lp[i], sigma_p)
         maps[i, :] = hp.synfast(cl[i, :], nside, verbose=0)
 
     return lp, cl, maps
 
 
-def CreateRealisticData(nmodels, nside):
+def make_maps_with_real_spectra(nmodels, nside):
     """
     Create a set of data with realistic maps of CMB, spectra and alm
 
@@ -55,20 +55,17 @@ def CreateRealisticData(nmodels, nside):
     nmodels: int
         Number of models.
     nside: int
-        The resolution of the maps created
+        Resolution for the maps, power of 2.
 
     ================ Return ====================================
     mymaps: 2D array
-        Set of maps of the full sky, first indice is the number of the map
-        second indice is the number of the pixel on the map, realistic CMB maps.
+        Set of maps of the full sky (realistic CMB maps), shape (nmodels, #pixels)
     mycls: 2D array
-        Set of realistic spectra, first indice is the number of the spectrum
-        second indice is the value of the spectrum.
+        Set of realistic spectra, shape (nmodels, #cls)
     expcls: 2D array
-        Set of anafast spectra, first indice is the number of the spectrum
-        second indice is the value of the spectrum.
+        Cls computed with anafast, shape (nmodels, #cls)
     myalms: complex array
-        Spectrum computed with anafast.
+        alms computed with anafast, shape (nmodels, #alms)
     """
     pars = camb.CAMBparams()
     pars.set_cosmology(H0=67.5, ombh2=0.022, omch2=0.122, mnu=0.06, omk=0, tau=0.06)
@@ -117,10 +114,6 @@ def AddWhiteNoise(maps, sigma_n):
     maps: 2D array
         Set of maps of the full sky, shape(#maps, #pixels)
     sigma_n: A float, the standard deviation of the gaussian noise
-    
-    ============ Return ====================
-    inp_n: A 2D array, the set of maps of the full sky, first indice is the number of the map
-        second indice is the number of the pixel on the map, maps with white noise
     """
     return maps + np.random.randn(maps.shape[0], maps.shape[1]) * sigma_n
 
@@ -222,7 +215,7 @@ def make_model(nside, num_out, retrain=False, preexisting_model=None):
     return model
 
 
-def make_training(model, x, y, validation_split, epoch, batch_size, out_dir, patience=10, today=None):
+def make_training(model, x_train, y_train, validation_split, epochs, batch_size, out_dir, patience=10, today=None):
     """
     Train a model.
 
@@ -231,16 +224,16 @@ def make_training(model, x, y, validation_split, epoch, batch_size, out_dir, pat
         Training input data.
     y_train: A 1 or 2D array or list of float
         Training output data.
-    x_test: A 3D array of float
-        Validation input data.
-    y_test: A 1 or 2D array of float
-        Validation output data.
-    epoch: int
+    validation_split: float
+        Fraction of the data used for validation, between 0 and 1.
+    epochs: int
         Number of epochs.
     batch_size: int
         Batch size.
     out_dir: str
-        Repository of the saved weights.
+        Repository where the model and the weights will be saved.
+    patience : int
+        Number of epochs with no improvement after which training will be stopped.
     today: str
         Name for the weights that will be saved.
 
@@ -249,7 +242,7 @@ def make_training(model, x, y, validation_split, epoch, batch_size, out_dir, pat
     model: A trained model
     hist: the history of the training containing the losses, the validation losses etc.
     """
-    x = np.reshape(x, (x.shape[0], x.shape[1], 1))
+    x_train = np.expand_dims(x_train, axis=2)
 
     # Set the callbacks
     # Save weights during training
@@ -271,24 +264,32 @@ def make_training(model, x, y, validation_split, epoch, batch_size, out_dir, pat
     callbacks = [checkpointer_mse, stop]
 
     # Train the model
-    hist = model.fit(x, y,
-                     epochs=epoch,
+    hist = model.fit(x_train, y_train,
+                     epochs=epochs,
                      batch_size=batch_size,
                      validation_split=validation_split,
                      verbose=1,
                      callbacks=callbacks,
                      shuffle=True)
 
+    # Save the model as a pickle in a file
+    kr.models.save_model(model, out_dir + today + '_model.h5py.File')
+
     return model, hist
 
 
 def make_prediction(inp, model, sigma_n=0):
     """
-    Make a prediction with given model and data, add also nois to the data
+    Make a prediction with given model and data
+    Add also noise to the data.
+
     ============ Parameters =============================
-    inp: An array of float. The input data.
+    inp: array
+        Input data.
     model: The given model
-    sigma_n: A float or n integer, the standard deviation of the gaussian white noise.
+    sigma_n: float
+        Standard deviation of the gaussian white noise.
+
     ============ Return =================================
     pred: An array or a list with the predicted data.
     """
