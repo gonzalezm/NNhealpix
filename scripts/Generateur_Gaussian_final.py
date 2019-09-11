@@ -8,22 +8,18 @@ import ConvNNTempLib as cnn
 name = sys.argv[1]
 
 # Directory where files will be saved
-dir = sys.argv[2]
+out_dir = sys.argv[2]
 today = datetime.datetime.now().strftime('%Y%m%d_%H_%M_%S')
-out_dir = dir + '/{}/'.format(today)
+out_dir += '/{}/'.format(today)
 
-Nmodel = int(sys.argv[3])
+os.makedirs(out_dir, exist_ok=True)
+
+nmodel = int(sys.argv[3])
 sigma_p = 5
-Nside = 16
+nside = 16
 
-l_p, C_l, Maps = cnn.CreateGaussianMapsAndCl(Nmodel, sigma_p, Nside)
+lp, cl, maps = cnn.CreateGaussianMapsAndCl(nmodel, sigma_p, nside)
 
-try:
-    os.makedirs(out_dir)
-except:
-    print("path error")
-    pass
-
-np.save(out_dir + name + '_l_p', l_p)
-np.save(out_dir + name + '_C_l', C_l)
-np.save(out_dir + name + '_Maps', Maps)
+np.save(out_dir + name + '_lp', lp)
+np.save(out_dir + name + '_cl', cl)
+np.save(out_dir + name + '_maps', maps)
