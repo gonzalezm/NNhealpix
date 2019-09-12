@@ -5,6 +5,10 @@ import datetime
 
 import ConvNNTempLib as cnn
 
+"""
+parameters: name of the dataset, parent output directory, size of data to be generated
+"""
+
 name = sys.argv[1]
 
 # Directory where files will be saved
