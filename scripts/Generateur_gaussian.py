@@ -9,8 +9,8 @@ name = sys.argv[1]
 
 # Directory where files will be saved
 out_dir = sys.argv[2]
-today = datetime.datetime.now().strftime('%Y%m%d-%H-%M-%S')
-out_dir += '/inputs-' + name + '-{}/'.format(today)
+today = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+out_dir += '/{}-'.format(today) + name +  '/'
 
 os.makedirs(out_dir, exist_ok=True)
 
@@ -20,6 +20,6 @@ nside = 16
 
 lp, cl, maps = cnn.make_maps_with_gaussian_spectra(nmodel, sigma_p, nside)
 
-np.save(out_dir + '_lp', lp)
-np.save(out_dir + '_cl', cl)
-np.save(out_dir + '_maps', maps)
+np.save(out_dir + 'lp', lp)
+np.save(out_dir + 'cl', cl)
+np.save(out_dir + 'maps', maps)

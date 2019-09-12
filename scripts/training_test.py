@@ -7,22 +7,22 @@ import sklearn.model_selection as skmodel
 
 import ConvNNTempLib as cnn
 
-name = sys.argv[1]
-dir = sys.argv[2]
-input_name = sys.argv[3]
+"""
+Test script to find the maximum of a gaussian power spectrum
+parameters: input directory, output directory
+"""
+in_dir = sys.argv[1]
+out_dir = sys.argv[2]
 
-in_dir = dir + '/' + input_name
-
-# Directory where files will be saved
-today = datetime.datetime.now().strftime('%Y%m%d-%H-%M-%S')
-out_dir = dir + '/output-{}/'.format(today)
+today = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+out_dir += '/output-{}/'.format(today)
 
 # Creat the repository where save new data
 os.makedirs(out_dir, exist_ok=True)
 
 # Load the data
-lp = np.load(in_dir + '/_lp.npy')
-maps = np.load(in_dir + '/_maps.npy')
+lp = np.load(in_dir + '/lp.npy')
+maps = np.load(in_dir + '/maps.npy')
 print('maps shape :', maps.shape)
 
 # Get Nside
@@ -38,10 +38,14 @@ maps = cnn.NormalizeMaps(maps)
 X_train, X_test, y_train, y_test = skmodel.train_test_split(maps, lp, test_size=0.1)
 
 # Make a model
-model = cnn.make_model(nside, 1)
+model = cnn.make_model(nside, y_train[0].size)
 
 # Train the model
 model, hist = cnn.make_training(model, X_train, y_train, 0.1, 10, 20, out_dir, today=today)
 
-# Print the final error
-print('loss :', hist.history['loss'])
+X_test = np.expand_dims(X_test, axis=2)
+
+error = model.evaluate(X_test, y_test)
+
+# Print the final error over validation data    
+print('error:', error)
