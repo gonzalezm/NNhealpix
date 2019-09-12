@@ -4,7 +4,6 @@ import nnhealpix
 import nnhealpix.layers
 import numpy as np
 import math
-import camb
 
 
 def make_maps_with_gaussian_spectra(nmodel, sigma_p, nside):
@@ -67,6 +66,7 @@ def make_maps_with_real_spectra(nmodels, nside):
     myalms: complex array
         alms computed with anafast, shape (nmodels, #alms)
     """
+    import camb
     pars = camb.CAMBparams()
     pars.set_cosmology(H0=67.5, ombh2=0.022, omch2=0.122, mnu=0.06, omk=0, tau=0.06)
     pars.InitPower.set_params(ns=0.965, r=0)
