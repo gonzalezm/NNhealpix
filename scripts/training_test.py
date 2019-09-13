@@ -37,10 +37,12 @@ maps = cnn.NormalizeMaps(maps)
 # Split train and test datas
 X_train, X_test, y_train, y_test = skmodel.train_test_split(maps, lp, test_size=0.1)
 
-# Make a model
+# Load a model
 # premodel = '/sps/hep/qubic/Users/lmousset/Machine_learning/simulations/output-20190913194551/20190913194551_model.json'
 # weights = '/sps/hep/qubic/Users/lmousset/Machine_learning/simulations/output-20190913194551/20190913194551_weights.hdf5'
 # model = cnn.load_model(premodel, weights=None)
+
+# Make a model
 model = cnn.make_model(nside, y_train[0].size, out_dir, today)
 
 # Train the model
