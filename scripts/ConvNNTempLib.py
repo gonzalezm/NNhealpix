@@ -4,7 +4,9 @@ import nnhealpix
 import nnhealpix.layers
 import numpy as np
 import math
-
+import camb
+import json
+from keras.models import model_from_json
 
 def make_maps_with_gaussian_spectra(nmodel, sigma_p, nside):
     """
@@ -66,7 +68,7 @@ def make_maps_with_real_spectra(nmodels, nside):
     myalms: complex array
         alms computed with anafast, shape (nmodels, #alms)
     """
-    import camb
+
     pars = camb.CAMBparams()
     pars.set_cosmology(H0=67.5, ombh2=0.022, omch2=0.122, mnu=0.06, omk=0, tau=0.06)
     pars.InitPower.set_params(ns=0.965, r=0)
@@ -155,7 +157,7 @@ def make_patch_maps(maps, theta, phi, radius):
     return map_patch
 
 
-def make_model(nside, num_out, retrain=False, preexisting_model=None):
+def make_model(nside, num_out, out_dir=None, today=None, preexisting_model=None):
     """
     Architecture of the Neural Network using the NNhealpix functions
 
@@ -166,18 +168,28 @@ def make_model(nside, num_out, retrain=False, preexisting_model=None):
         Resolution parameter of your input maps, must be a power of 2.
     num_out: int
         Number of neuron of the output layer.
-    retrain: bool
-        Set True if you want to load a model already trained.
+    out_dir: str
+        Directory to save the model if you make a new one
+    today: str
+        Date and hour that will be add to the name of the model.
     preexisting_model: str
-        Path for the pre-existing model if retrain==True.
+        .json file containing a model architecture.
 
     ========= Return ================
     model
     """
 
-    if retrain:
-        with kr.utils.CustomObjectScope({'OrderMap': nnhealpix.layers.OrderMap}):
-            model = kr.models.load_model(preexisting_model)
+    if preexisting_model is not None:
+        # load json and create model
+        json_file = open(preexisting_model, 'r')
+        loaded_model_json = json_file.read()
+        json_file.close()
+        model = model_from_json(loaded_model_json,
+                                custom_objects={'OrderMap': nnhealpix.layers.OrderMap})
+        model.compile(loss=kr.losses.mse,
+                      optimizer='adam',
+                      metrics=[kr.metrics.mean_absolute_percentage_error])
+
     else:
         inputs = kr.layers.Input((12 * nside ** 2, 1))
         x = inputs
@@ -209,6 +221,11 @@ def make_model(nside, num_out, retrain=False, preexisting_model=None):
         model.compile(loss=kr.losses.mse,
                       optimizer='adam',
                       metrics=[kr.metrics.mean_absolute_percentage_error])
+
+        # Save the model as a pickle
+        model_json = model.to_json()
+        with open(out_dir + today + '_model.json', 'w') as json_file:
+            json_file.write(model_json)
 
     model.summary()
 
@@ -250,10 +267,10 @@ def make_training(model, x_train, y_train, validation_split, epochs, batch_size,
         filepath=out_dir + today + '_weights.{epoch:02d}-{val_loss:.2f}.hdf5',
         monitor='val_loss',
         verbose=1,
-        save_best_only=True,
-        save_weights_only=False,
-        mode='min',
-        period=1)
+        save_best_only=False,
+        save_weights_only=True,
+        mode='auto',
+        period=2)
 
     # Stop the training if doesn't improve
     stop = kr.callbacks.EarlyStopping(monitor='val_loss',
@@ -272,8 +289,9 @@ def make_training(model, x_train, y_train, validation_split, epochs, batch_size,
                      callbacks=callbacks,
                      shuffle=True)
 
-    # Save the model as a pickle in a file
-    kr.models.save_model(model, out_dir + today + '_model.h5py.File')
+    # Save the history as a json file
+    # hist.history is a dictionary
+    json.dump(hist.history, open(out_dir + today + '_hist.json', 'w'))
 
     return model, hist
 
