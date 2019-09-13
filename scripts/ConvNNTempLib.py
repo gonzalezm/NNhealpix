@@ -157,7 +157,42 @@ def make_patch_maps(maps, theta, phi, radius):
     return map_patch
 
 
-def make_model(nside, num_out, out_dir=None, today=None, preexisting_model=None):
+def load_model(model, weights=None):
+    """
+    Load a preexisting model
+    Parameters
+    ----------
+    model : str
+        .json file containing the model architecture
+    weights : str
+        .hdf5 file with the weights to load.
+        It is None by default, in case you don't want to load weights.
+
+    Returns
+    -------
+    A compiled model.
+
+    """
+
+    # load json and create model
+    json_file = open(model, 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    loaded_model = model_from_json(loaded_model_json,
+                            custom_objects={'OrderMap': nnhealpix.layers.OrderMap})
+    # load weights into new model
+    if weights is not None:
+        loaded_model.load_weights(weights)
+    print("Loaded model from disk")
+
+    # Compile the model
+    loaded_model.compile(loss=kr.losses.mse,
+                  optimizer='adam',
+                  metrics=[kr.metrics.mean_absolute_percentage_error])
+    return loaded_model
+
+
+def make_model(nside, num_out, out_dir, today):
     """
     Architecture of the Neural Network using the NNhealpix functions
 
@@ -169,63 +204,49 @@ def make_model(nside, num_out, out_dir=None, today=None, preexisting_model=None)
     num_out: int
         Number of neuron of the output layer.
     out_dir: str
-        Directory to save the model if you make a new one
+        Directory to save the model.
     today: str
         Date and hour that will be add to the name of the model.
-    preexisting_model: str
-        .json file containing a model architecture.
 
     ========= Return ================
     model
     """
 
-    if preexisting_model is not None:
-        # load json and create model
-        json_file = open(preexisting_model, 'r')
-        loaded_model_json = json_file.read()
-        json_file.close()
-        model = model_from_json(loaded_model_json,
-                                custom_objects={'OrderMap': nnhealpix.layers.OrderMap})
-        model.compile(loss=kr.losses.mse,
-                      optimizer='adam',
-                      metrics=[kr.metrics.mean_absolute_percentage_error])
+    inputs = kr.layers.Input((12 * nside ** 2, 1))
+    x = inputs
 
-    else:
-        inputs = kr.layers.Input((12 * nside ** 2, 1))
-        x = inputs
+    # NBB loop (conv and degrade from nside to 1)
 
-        # NBB loop (conv and degrade from nside to 1)
-
-        for i in range(int(math.log(nside, 2))):
-            # Recog of the neighbours & Convolution
-            print(int(nside / (2 ** i)), int(nside / (2 ** (i + 1))))
-            x = nnhealpix.layers.ConvNeighbours(int(nside / (2 ** i)),
-                                                filters=32,
-                                                kernel_size=9)(x)
-            x = kr.layers.Activation('relu')(x)
-            # Degrade
-            x = nnhealpix.layers.AveragePooling(int(nside / (2 ** i)),
-                                                int(nside / (2 ** (i + 1))))(x)
-
-        # End of the NBBs
-
-        x = kr.layers.Dropout(0.2)(x)
-        x = kr.layers.Flatten()(x)
-        x = kr.layers.Dense(256)(x)
+    for i in range(int(math.log(nside, 2))):
+        # Recog of the neighbours & Convolution
+        print(int(nside / (2 ** i)), int(nside / (2 ** (i + 1))))
+        x = nnhealpix.layers.ConvNeighbours(int(nside / (2 ** i)),
+                                            filters=32,
+                                            kernel_size=9)(x)
         x = kr.layers.Activation('relu')(x)
-        x = kr.layers.Dense(num_out)(x)
+        # Degrade
+        x = nnhealpix.layers.AveragePooling(int(nside / (2 ** i)),
+                                            int(nside / (2 ** (i + 1))))(x)
 
-        out = kr.layers.Activation('relu')(x)
+    # End of the NBBs
 
-        model = kr.models.Model(inputs=inputs, outputs=out)
-        model.compile(loss=kr.losses.mse,
-                      optimizer='adam',
-                      metrics=[kr.metrics.mean_absolute_percentage_error])
+    x = kr.layers.Dropout(0.2)(x)
+    x = kr.layers.Flatten()(x)
+    x = kr.layers.Dense(256)(x)
+    x = kr.layers.Activation('relu')(x)
+    x = kr.layers.Dense(num_out)(x)
 
-        # Save the model as a pickle
-        model_json = model.to_json()
-        with open(out_dir + today + '_model.json', 'w') as json_file:
-            json_file.write(model_json)
+    out = kr.layers.Activation('relu')(x)
+
+    model = kr.models.Model(inputs=inputs, outputs=out)
+    model.compile(loss=kr.losses.mse,
+                  optimizer='adam',
+                  metrics=[kr.metrics.mean_absolute_percentage_error])
+
+    # Save the model as a pickle
+    model_json = model.to_json()
+    with open(out_dir + today + '_model.json', 'w') as json_file:
+        json_file.write(model_json)
 
     model.summary()
 
