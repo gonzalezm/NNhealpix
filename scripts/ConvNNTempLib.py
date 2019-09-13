@@ -8,6 +8,17 @@ import camb
 import json
 from keras.models import model_from_json
 
+def single_map_gaussian_spectrum(mu,sigma,nside):
+    """
+    Returns the cls normally distributed with mu and sigma and the corresponding map. The length of the cls is 4*nside
+    """
+    def gaussian(x, mu, sig):
+        return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.))) + 1e-5
+    ll = np.arange(4*nside)
+    cls = gaussian(ll, mu, sigma)
+    gaussian_map = hp.synfast(cls, nside, verbose=0)
+    return cls, gaussian_map
+
 def make_maps_with_gaussian_spectra(nmodel, sigma_p, nside):
     """
     Create Gaussian spectra and associated Healpix maps.
@@ -30,23 +41,42 @@ def make_maps_with_gaussian_spectra(nmodel, sigma_p, nside):
         Set of maps of the full sky, shape (nmodel, #pixels)
     """
 
-    def gaussian(x, mu, sig):
-        return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.))) + 1e-5
-
-    ll = np.arange(4 * nside)
-
-    maps = np.empty((nmodel, hp.nside2npix(nside)))
-    cl = np.empty((nmodel, len(ll)))
-    lp = np.empty(nmodel)
-
-    for i in range(nmodel):
-        np.random.seed()
-        lp[i] = np.random.uniform(5., 2. * nside)
-        cl[i, :] = gaussian(ll, lp[i], sigma_p)
-        maps[i, :] = hp.synfast(cl[i, :], nside, verbose=0)
+    np.random.seed()
+    lp = np.random.uniform(5., 2. * nside,nmodel)
+    
+    results = [single_map_gaussian_spectrum(lp[i],sigma_p,nside) for i in range(nmodel)]
+    cl, maps = zip(*results)
 
     return lp, cl, maps
 
+def make_maps_with_gaussian_spectra_random_sigma(nmodel, nside):
+    """
+    Create Gaussian spectra and associated Healpix maps.
+    Return also the means of the gaussian.
+
+    ========= Parameters ========================
+    nmodel: int
+        Number of C_l, l_p and Maps you want to create.
+    nside: int
+        Resolution for the maps, power of 2.
+    
+    ========= Return ==========================
+    lp: list, len = 4 x nside
+        Gaussian means random between 5 and 2xnside
+    cl: 2D array
+        Set of gaussian spectra, shape (nmodel, 4 x nside)
+    maps: 2D array
+        Set of maps of the full sky, shape (nmodel, #pixels)
+    """
+
+    np.random.seed()
+    lp = np.random.uniform(5., 2. * nside,nmodel)
+    sg = np.random.uniform(3,10,nmodel)
+
+    results = [single_map_gaussian_spectrum(lp[i],sg[i],nside) for i in range(nmodel)]
+    cl, maps = zip(*results)
+
+    return lp, cl, maps
 
 def make_maps_with_real_spectra(nmodels, nside):
     """
