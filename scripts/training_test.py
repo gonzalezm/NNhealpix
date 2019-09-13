@@ -38,7 +38,7 @@ maps = cnn.NormalizeMaps(maps)
 X_train, X_test, y_train, y_test = skmodel.train_test_split(maps, lp, test_size=0.1)
 
 # Make a model
-model = cnn.make_model(nside, y_train[0].size)
+model = cnn.make_model(nside, y_train[0].size,out_dir,today)
 
 # Train the model
 model, hist = cnn.make_training(model, X_train, y_train, 0.1, 10, 20, out_dir, today=today)
