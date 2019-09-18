@@ -24,8 +24,8 @@ lmax = 5
 nside = 16
 test_frac = 0.1
 
-cl_train, maps_train = make_maps_with_random_spectra(int(nmodel*(1-test_frac)), lmax, nside)
-cl_test, maps_test = make_maps_with_random_spectra(int(nmodel*test_frac), lmax, nside)
+cl_train, maps_train = cnn.make_maps_with_random_spectra(int(nmodel*(1-test_frac)), lmax, nside)
+cl_test, maps_test = cnn.make_maps_with_random_spectra(int(nmodel*test_frac), lmax, nside)
 
 np.save(out_dir + 'cl_train', cl_train)
 np.save(out_dir + 'maps_train', maps_train)
