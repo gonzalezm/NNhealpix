@@ -1,0 +1,16 @@
+OMP: Info #212: KMP_AFFINITY: decoding x2APIC ids.
+OMP: Info #210: KMP_AFFINITY: Affinity capable, using global cpuid leaf 11 info
+OMP: Info #154: KMP_AFFINITY: Initial OS proc set respected: 0-3
+OMP: Info #156: KMP_AFFINITY: 4 available OS procs
+OMP: Info #157: KMP_AFFINITY: Uniform topology
+OMP: Info #179: KMP_AFFINITY: 1 packages x 2 cores/pkg x 2 threads/core (2 total cores)
+OMP: Info #214: KMP_AFFINITY: OS proc to physical thread map:
+OMP: Info #171: KMP_AFFINITY: OS proc 0 maps to package 0 core 0 thread 0 
+OMP: Info #171: KMP_AFFINITY: OS proc 2 maps to package 0 core 0 thread 1 
+OMP: Info #171: KMP_AFFINITY: OS proc 1 maps to package 0 core 1 thread 0 
+OMP: Info #171: KMP_AFFINITY: OS proc 3 maps to package 0 core 1 thread 1 
+OMP: Info #250: KMP_AFFINITY: pid 23272 tid 23272 thread 0 bound to OS proc set 0
+OMP: Info #250: KMP_AFFINITY: pid 23272 tid 23279 thread 1 bound to OS proc set 1
+OMP: Info #250: KMP_AFFINITY: pid 23272 tid 23280 thread 2 bound to OS proc set 2
+OMP: Info #250: KMP_AFFINITY: pid 23272 tid 23281 thread 3 bound to OS proc set 3
+Using TensorFlow backend.

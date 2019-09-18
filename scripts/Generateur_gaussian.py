@@ -22,9 +22,14 @@ os.makedirs(out_dir, exist_ok=True)
 nmodel = int(sys.argv[3])
 sigma_p = 5
 nside = 16
+test_fraction = 0.1
 
-lp, cl, maps = cnn.make_maps_with_gaussian_spectra(nmodel, sigma_p, nside)
+lp_train, cl_train, maps_train = cnn.make_maps_with_gaussian_spectra(int(nmodel*(1-test_fraction)), sigma_p, nside)
+lp_test, cl_test, maps_test = cnn.make_maps_with_gaussian_spectra(int(nmodel*test_fraction), sigma_p, nside)
 
-np.save(out_dir + 'lp', lp)
-np.save(out_dir + 'cl', cl)
-np.save(out_dir + 'maps', maps)
+np.save(out_dir + 'lp_train', lp_train)
+np.save(out_dir + 'cl_train', cl_train)
+np.save(out_dir + 'maps_train', maps_train)
+np.save(out_dir + 'lp_test', lp_test)
+np.save(out_dir + 'cl_test', cl_test)
+np.save(out_dir + 'maps_test', maps_test)
