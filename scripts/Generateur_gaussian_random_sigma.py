@@ -14,7 +14,8 @@ name = sys.argv[1]
 # Directory where files will be saved
 out_dir = sys.argv[2]
 today = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-out_dir += '/{}-'.format(today) + name +  '/'
+#out_dir += '/{}-'.format(today) + name +  '/'
+out_dir += '/' + name +  '/'
 
 os.makedirs(out_dir, exist_ok=True)
 
