@@ -18,14 +18,15 @@ out_dir += '/' + name +  '/'
 
 today = datetime.datetime.now().strftime('%Y%m%d-%H-%M-%S')
 
-with open(out_dir + 'metadata.dat', 'a') as metadata:
-    metadata.write('name : {}\n today : {}\n in_dir : {}\n out_dir : {}'.format(name, today, in_dir, out_dir) )
-
 # Creat the repository where save new data
 os.makedirs(out_dir, exist_ok=True)
 
+# Save training metadata
+with open(out_dir + 'metadata.dat', 'a') as metadata:
+    metadata.write('name : {}\n today : {}\n in_dir : {}\n out_dir : {}'.format(name, today, in_dir, out_dir) )
+
 # Load the data
-lp = np.load(in_dir + '/lp_train.npy')
+cl = np.load(in_dir + '/cl_train.npy')
 maps = np.load(in_dir + '/maps_train.npy')
 print('maps shape :', maps.shape)
 
@@ -44,7 +45,7 @@ maps = cnn.NormalizeMaps(maps)
 # model = cnn.load_model(premodel, weights=None)
 
 # Make a model
-model = cnn.make_model(nside, lp[0].size, out_dir)
+model = cnn.make_model(nside, cl[0].size, out_dir)
 
 # Train the model
-model, hist = cnn.make_training(model, maps, lp, 0.1, 100, 20, out_dir)
+model, hist = cnn.make_training(model, maps, cl, 0.1, 100, 20, out_dir)
