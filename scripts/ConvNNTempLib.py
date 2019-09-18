@@ -347,25 +347,3 @@ def make_training(model, x_train, y_train, validation_split, epochs, batch_size,
     json.dump(hist.history, open(out_dir + 'hist.json', 'w'))
 
     return model, hist
-
-
-def make_prediction(inp, model, sigma_n=0):
-    """
-    Make a prediction with given model and data
-    Add also noise to the data.
-
-    ============ Parameters =============================
-    inp: array
-        Input data.
-    model: The given model
-    sigma_n: float
-        Standard deviation of the gaussian white noise.
-
-    ============ Return =================================
-    pred: An array or a list with the predicted data.
-    """
-    inp = AddWhiteNoise(inp, sigma_n)
-    inp = NormalizeMaps(inp)
-    inp = inp.reshape(inp.shape[0], inp.shape[1], 1)
-    pred = model.predict(inp)
-    return pred
