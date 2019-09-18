@@ -8,6 +8,12 @@ import camb
 import json
 from keras.models import model_from_json
 
+
+def make_maps_with_random_spectra(nmodel, lmax, nside):
+    cls = np.random.rand(nmodel, lmax)
+    random_maps = [hp.synfast(cl[i],16,verbose=0) for i in range(nmodel)]
+    return cls, random_maps
+
 def single_map_gaussian_spectrum(mu,sigma,nside):
     """
     Returns the cls normally distributed with mu and sigma and the corresponding map. The length of the cls is 4*nside
