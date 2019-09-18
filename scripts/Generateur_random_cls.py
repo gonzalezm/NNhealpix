@@ -23,8 +23,7 @@ nmodel = int(sys.argv[3])
 lmax = 5
 nside = 16
 
-lp, cl, maps = cnn.make_maps_with_gaussian_spectra(nmodel, lmax, nside)
+cl, maps = make_maps_with_random_spectra(nmodel, lmax, nside)
 
-np.save(out_dir + 'lp', lp)
 np.save(out_dir + 'cl', cl)
 np.save(out_dir + 'maps', maps)
