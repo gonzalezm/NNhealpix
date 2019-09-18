@@ -228,7 +228,7 @@ def load_model(model, weights=None):
     return loaded_model
 
 
-def make_model(nside, num_out, out_dir, today):
+def make_model(nside, num_out, out_dir):
     """
     Architecture of the Neural Network using the NNhealpix functions
 
@@ -241,8 +241,6 @@ def make_model(nside, num_out, out_dir, today):
         Number of neuron of the output layer.
     out_dir: str
         Directory to save the model.
-    today: str
-        Date and hour that will be add to the name of the model.
 
     ========= Return ================
     model
@@ -281,7 +279,7 @@ def make_model(nside, num_out, out_dir, today):
 
     # Save the model as a pickle
     model_json = model.to_json()
-    with open(out_dir + today + '_model.json', 'w') as json_file:
+    with open(out_dir + 'model.json', 'w') as json_file:
         json_file.write(model_json)
 
     model.summary()
@@ -289,7 +287,7 @@ def make_model(nside, num_out, out_dir, today):
     return model
 
 
-def make_training(model, x_train, y_train, validation_split, epochs, batch_size, out_dir, patience=10, today=None):
+def make_training(model, x_train, y_train, validation_split, epochs, batch_size, out_dir, patience=10):
     """
     Train a model.
 
@@ -307,9 +305,7 @@ def make_training(model, x_train, y_train, validation_split, epochs, batch_size,
     out_dir: str
         Repository where the model and the weights will be saved.
     patience : int
-        Number of epochs with no improvement after which training will be stopped.
-    today: str
-        Name for the weights that will be saved.
+        Number of epochs with no improvement after which training will be stopped
 
 
     =================== Results ===================================
@@ -321,7 +317,7 @@ def make_training(model, x_train, y_train, validation_split, epochs, batch_size,
     # Set the callbacks
     # Save weights during training
     checkpointer_mse = kr.callbacks.ModelCheckpoint(
-        filepath=out_dir + today + '_weights.{epoch:02d}-{val_loss:.2f}.hdf5',
+        filepath=out_dir + 'weights.{epoch:02d}-{val_loss:.2f}.hdf5',
         monitor='val_loss',
         verbose=1,
         save_best_only=False,
@@ -348,7 +344,7 @@ def make_training(model, x_train, y_train, validation_split, epochs, batch_size,
 
     # Save the history as a json file
     # hist.history is a dictionary
-    json.dump(hist.history, open(out_dir + today + '_hist.json', 'w'))
+    json.dump(hist.history, open(out_dir + 'hist.json', 'w'))
 
     return model, hist
 
