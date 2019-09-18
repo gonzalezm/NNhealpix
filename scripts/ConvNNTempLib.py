@@ -273,7 +273,7 @@ def make_model(nside, num_out, out_dir):
     out = kr.layers.Activation('relu')(x)
 
     model = kr.models.Model(inputs=inputs, outputs=out)
-    model.compile(loss=kr.losses.mse,
+    model.compile(loss='mean_squared_error',
                   optimizer='adam',
                   metrics=[kr.metrics.mean_absolute_percentage_error])
 
