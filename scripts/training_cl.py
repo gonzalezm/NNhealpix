@@ -48,4 +48,4 @@ maps = cnn.NormalizeMaps(maps)
 model = cnn.make_model(nside, cl[0].size, out_dir)
 
 # Train the model
-model, hist = cnn.make_training(model, maps, cl, 0.1, 100, 20, out_dir)
+model, hist = cnn.make_training(model, maps, cl, 0.1, 40, 20, out_dir)
