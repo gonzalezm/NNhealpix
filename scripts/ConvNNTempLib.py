@@ -9,11 +9,11 @@ import json
 from keras.models import model_from_json
 
 
-def make_random_dipole_map(nmodel,nside):
+def make_random_dipole_maps(nmodel,nside):
     cls = np.random.rand(nmodel, 2)
     cls[:,0]=0
     random_dipole_maps = [hp.synfast(cls[i],16,verbose=0) for i in range(nmodel)]
-    retrn cls, maps
+    return cls, random_dipole_maps
 
 def make_maps_with_random_spectra(nmodel, lmax, nside):
     cls = np.random.rand(nmodel, lmax)
